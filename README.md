@@ -6,7 +6,7 @@ Projeto incremental da disciplina **Sistemas Distribuídos** (UERN, 3ª unidade)
 
 | | |
 |---|---|
-| 🌐 **URL pública** | https://SUA-API.onrender.com ← *(substituir)* |
+| 🌐 **URL pública** | https://reservas-salas-api.onrender.com |
 | 🎥 **Vídeo de demonstração** | https://youtu.be/SEU-VIDEO ← *(substituir)* |
 | 🏷️ **Tag da entrega** | `entrega-1-cloud` |
 
@@ -136,7 +136,7 @@ npm run dev                  # API em http://localhost:3000
 ### Script automatizado (Node, funciona no Windows/Linux/Mac)
 
 ```bash
-npm run test:api -- https://SUA-API.onrender.com
+npm run test:api -- https://reservas-salas-api.onrender.com
 ```
 
 Ele executa o fluxo completo: health, criar, conflito (409), listar, atualizar, confirmar, deletar e verificar 404.
@@ -144,7 +144,7 @@ Ele executa o fluxo completo: health, criar, conflito (409), listar, atualizar, 
 ### Comandos curl
 
 ```bash
-URL=https://SUA-API.onrender.com
+URL=https://reservas-salas-api.onrender.com
 
 curl $URL/health
 
