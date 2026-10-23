@@ -7,7 +7,7 @@ Projeto incremental da disciplina **Sistemas Distribuídos** (UERN, 3ª unidade)
 | | |
 |---|---|
 | 🌐 **URL pública** | https://reservas-salas-api.onrender.com |
-| 🎥 **Vídeo de demonstração** | https://youtu.be/SEU-VIDEO ← *(substituir)* |
+| 🎥 **Vídeo de demonstração** | https://drive.google.com/file/d/1nra5iK1i0fpFXBGh57rVP6sTLAbB59ck/view?usp=sharing |
 | 🏷️ **Tag da entrega** | `entrega-1-cloud` |
 
 ---
