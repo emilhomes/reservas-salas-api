@@ -5,3 +5,6 @@ node_modules/
 *.pdf
 *.mp4
 *.mkv
+
+# Roteiro pessoal do vídeo (não vai para o repositório)
+ROTEIRO-VIDEO-*.md

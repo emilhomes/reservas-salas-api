@@ -1,19 +1,15 @@
 {
-  "name": "reservas-salas-api",
-  "version": "1.0.0",
-  "description": "API REST de reserva de salas - Projeto incremental de Sistemas Distribuídos (UERN)",
-  "main": "src/index.js",
+  "name": "reservas-salas-microsservicos",
+  "version": "2.0.0",
+  "description": "Reserva de salas em microsserviços - Projeto incremental de Sistemas Distribuídos (UERN)",
+  "private": true,
   "scripts": {
-    "start": "node src/index.js",
-    "dev": "node --watch --env-file-if-exists=.env src/index.js",
+    "install:all": "npm install --prefix services/salas && npm install --prefix services/usuarios && npm install --prefix services/reservas",
+    "dev": "node scripts/dev.js",
     "test:api": "node scripts/testar-api.js"
   },
   "engines": {
     "node": ">=22"
   },
-  "license": "MIT",
-  "dependencies": {
-    "express": "^5.1.0",
-    "pg": "^8.16.0"
-  }
+  "license": "MIT"
 }

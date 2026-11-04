@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 640" width="1000" height="640" font-family="Segoe UI, Arial, sans-serif">
+  <defs>
+    <marker id="seta" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1f3864"/>
+    </marker>
+    <marker id="setaLaranja" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#b9770e"/>
+    </marker>
+    <marker id="setaVerde" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1e8449"/>
+    </marker>
+    <marker id="setaCinza" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#7f8c8d"/>
+    </marker>
+  </defs>
+
+  <rect width="1000" height="640" fill="#ffffff"/>
+  <text x="500" y="36" text-anchor="middle" font-size="22" font-weight="700" fill="#1f3864">Reserva de Salas: arquitetura de microsserviços (Módulo 2)</text>
+
+  <!-- Molduras: Render e Neon -->
+  <rect x="240" y="70" width="440" height="510" rx="16" fill="none" stroke="#7f8c8d" stroke-width="1.5" stroke-dasharray="8 6"/>
+  <text x="460" y="94" text-anchor="middle" font-size="13" fill="#7f8c8d">Render (PaaS): 3 Web Services independentes, um por pasta</text>
+  <rect x="740" y="70" width="230" height="510" rx="16" fill="none" stroke="#7f8c8d" stroke-width="1.5" stroke-dasharray="8 6"/>
+  <text x="855" y="94" text-anchor="middle" font-size="13" fill="#7f8c8d">Neon (PostgreSQL gerenciado)</text>
+
+  <!-- Cliente -->
+  <rect x="30" y="270" width="160" height="90" rx="12" fill="#f4f6f9" stroke="#1f3864" stroke-width="2"/>
+  <text x="110" y="305" text-anchor="middle" font-size="17" font-weight="700" fill="#1f3864">Cliente</text>
+  <text x="110" y="327" text-anchor="middle" font-size="12" fill="#333">curl, navegador,</text>
+  <text x="110" y="343" text-anchor="middle" font-size="12" fill="#333">script de teste</text>
+
+  <!-- Serviço salas -->
+  <rect x="460" y="108" width="200" height="100" rx="12" fill="#e8f1fb" stroke="#1f3864" stroke-width="2"/>
+  <text x="560" y="136" text-anchor="middle" font-size="17" font-weight="700" fill="#1f3864">salas</text>
+  <text x="560" y="156" text-anchor="middle" font-size="12" fill="#333">Node.js + Express</text>
+  <text x="560" y="173" text-anchor="middle" font-size="12" fill="#333">CRUD /salas</text>
+  <text x="560" y="190" text-anchor="middle" font-size="12" fill="#333">porta local 3001</text>
+
+  <!-- Serviço reservas -->
+  <rect x="270" y="270" width="200" height="120" rx="12" fill="#fdf2e3" stroke="#b9770e" stroke-width="2.5"/>
+  <text x="370" y="298" text-anchor="middle" font-size="17" font-weight="700" fill="#7e5109">reservas</text>
+  <text x="370" y="317" text-anchor="middle" font-size="12" fill="#333">entidade central</text>
+  <text x="370" y="334" text-anchor="middle" font-size="12" fill="#333">CRUD /reservas + status</text>
+  <text x="370" y="351" text-anchor="middle" font-size="12" fill="#333">conflito de horário</text>
+  <text x="370" y="368" text-anchor="middle" font-size="12" fill="#333">porta local 3000</text>
+
+  <!-- Serviço usuarios -->
+  <rect x="460" y="455" width="200" height="100" rx="12" fill="#e8f1fb" stroke="#1f3864" stroke-width="2"/>
+  <text x="560" y="483" text-anchor="middle" font-size="17" font-weight="700" fill="#1f3864">usuarios</text>
+  <text x="560" y="503" text-anchor="middle" font-size="12" fill="#333">Node.js + Express</text>
+  <text x="560" y="520" text-anchor="middle" font-size="12" fill="#333">CRUD /usuarios</text>
+  <text x="560" y="537" text-anchor="middle" font-size="12" fill="#333">porta local 3002</text>
+
+  <!-- Bancos -->
+  <g fill="#eafaf1" stroke="#1e8449" stroke-width="2">
+    <rect x="770" y="118" width="170" height="80" rx="10"/>
+    <rect x="770" y="290" width="170" height="80" rx="10"/>
+    <rect x="770" y="465" width="170" height="80" rx="10"/>
+  </g>
+  <g text-anchor="middle" fill="#145a32">
+    <text x="855" y="153" font-size="15" font-weight="700">salas_db</text>
+    <text x="855" y="175" font-size="12">tabela salas</text>
+    <text x="855" y="325" font-size="15" font-weight="700">reservas_db</text>
+    <text x="855" y="347" font-size="12">tabela reservas</text>
+    <text x="855" y="500" font-size="15" font-weight="700">usuarios_db</text>
+    <text x="855" y="522" font-size="12">tabela usuarios</text>
+  </g>
+
+  <!-- Cliente -> serviços -->
+  <line x1="190" y1="315" x2="266" y2="322" stroke="#1f3864" stroke-width="2.5" marker-end="url(#seta)"/>
+  <text x="228" y="308" text-anchor="middle" font-size="11" fill="#1f3864">HTTPS</text>
+  <path d="M 140 270 C 160 150, 330 150, 456 152" fill="none" stroke="#7f8c8d" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#setaCinza)"/>
+  <path d="M 140 360 C 160 490, 330 510, 456 508" fill="none" stroke="#7f8c8d" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#setaCinza)"/>
+  <text x="300" y="148" font-size="11" fill="#7f8c8d">cadastro direto</text>
+  <text x="300" y="522" font-size="11" fill="#7f8c8d">cadastro direto</text>
+
+  <!-- reservas -> salas / usuarios (HTTP síncrono) -->
+  <line x1="430" y1="270" x2="510" y2="212" stroke="#b9770e" stroke-width="3" marker-end="url(#setaLaranja)"/>
+  <line x1="430" y1="390" x2="510" y2="451" stroke="#b9770e" stroke-width="3" marker-end="url(#setaLaranja)"/>
+  <text x="492" y="238" font-size="12" font-weight="700" fill="#7e5109">GET /salas/:id</text>
+  <text x="492" y="254" font-size="11" fill="#7e5109">HTTP síncrono</text>
+  <text x="492" y="416" font-size="12" font-weight="700" fill="#7e5109">GET /usuarios/:id</text>
+  <text x="492" y="432" font-size="11" fill="#7e5109">HTTP síncrono</text>
+
+  <!-- serviços -> bancos -->
+  <line x1="660" y1="158" x2="766" y2="158" stroke="#1e8449" stroke-width="2" marker-end="url(#setaVerde)"/>
+  <line x1="470" y1="330" x2="766" y2="330" stroke="#1e8449" stroke-width="2" marker-end="url(#setaVerde)"/>
+  <line x1="660" y1="505" x2="766" y2="505" stroke="#1e8449" stroke-width="2" marker-end="url(#setaVerde)"/>
+  <text x="714" y="150" text-anchor="middle" font-size="11" fill="#1e8449">SQL/TLS</text>
+  <text x="714" y="322" text-anchor="middle" font-size="11" fill="#1e8449">SQL/TLS</text>
+  <text x="714" y="497" text-anchor="middle" font-size="11" fill="#1e8449">SQL/TLS</text>
+
+  <!-- Legenda -->
+  <g font-size="12" fill="#333">
+    <text x="30" y="604">● Cada serviço só acessa o PRÓPRIO banco; dados de outro serviço só via HTTP.</text>
+    <text x="30" y="624">● Se salas/usuarios cair ou demorar: timeout (5 s) + 1 nova tentativa → reservas responde 503 com mensagem amigável.</text>
+  </g>
+</svg>
