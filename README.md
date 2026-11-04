@@ -7,8 +7,8 @@ Projeto incremental da disciplina **Sistemas Distribuídos** (UERN, 3ª unidade)
 | | |
 |---|---|
 | 🌐 **Reservas** (entrada principal) | https://reservas-salas-api.onrender.com |
-| 🌐 **Salas** | https://SEU-SERVICO-SALAS.onrender.com ← *(substituir)* |
-| 🌐 **Usuários** | https://SEU-SERVICO-USUARIOS.onrender.com ← *(substituir)* |
+| 🌐 **Salas** | https://servico-salas.onrender.com |
+| 🌐 **Usuários** | https://servico-usuarios.onrender.com |
 | 🎥 **Vídeo do Módulo 2** | https://youtu.be/SEU-VIDEO ← *(substituir)* |
 | 🎥 **Vídeo do Módulo 1** | https://drive.google.com/file/d/1nra5iK1i0fpFXBGh57rVP6sTLAbB59ck/view?usp=sharing |
 | 🏷️ **Tag da entrega** | `entrega-2-microsservicos` (anterior: `entrega-1-cloud`) |
@@ -193,9 +193,11 @@ npm run test:api
 
 # nuvem
 npm run test:api -- --reservas https://reservas-salas-api.onrender.com \
-                    --salas    https://SEU-SERVICO-SALAS.onrender.com \
-                    --usuarios https://SEU-SERVICO-USUARIOS.onrender.com
+                    --salas    https://servico-salas.onrender.com \
+                    --usuarios https://servico-usuarios.onrender.com
 ```
+
+✅ **Resultado na nuvem (04/11/2026):** 20/20 verificações passaram nas URLs públicas acima.
 
 O script acorda os 3 serviços, cria sala e usuário e então testa reserva criada (201), conflito (409), sala inexistente (422), usuário inexistente (422), sala inativa (422), detalhe com dados compostos, listagem, PUT, PATCH, health com dependências e limpeza.
 
