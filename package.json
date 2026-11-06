@@ -6,7 +6,8 @@
   "scripts": {
     "install:all": "npm install --prefix services/salas && npm install --prefix services/usuarios && npm install --prefix services/reservas",
     "dev": "node scripts/dev.js",
-    "test:api": "node scripts/testar-api.js"
+    "test:api": "node scripts/testar-api.js",
+    "painel": "node scripts/painel.js"
   },
   "engines": {
     "node": ">=22"

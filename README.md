@@ -185,6 +185,22 @@ Passo a passo:
 
 ## 6. Testes
 
+### Painel de demonstração (interface web)
+
+```bash
+npm run painel                # abre em http://localhost:4000 (testa a nuvem ou serviços locais já rodando)
+npm run painel -- --local     # também sobe os 3 serviços locais e permite derrubar/religar cada um
+```
+
+O painel não tem dependências e não altera os serviços: um pequeno servidor Node ([`scripts/painel.js`](scripts/painel.js)) entrega a página ([`painel/index.html`](painel/index.html)) e repassa as requisições para os serviços (os serviços não têm CORS, então o navegador não fala com eles diretamente). Ele mostra:
+
+- **Diagrama ao vivo:** cada requisição anima as setas entre cliente, reservas, salas e usuários, e cada serviço tem um indicador de saúde (`/health`).
+- **"O que aconteceu":** a explicação passo a passo de quem chamou quem e por que veio aquele código HTTP.
+- **Roteiro da apresentação:** 12 passos com o resultado esperado (201, 409, 422, 503...) e a conferência automática: saúde, cadastro em cada serviço, reserva validada via HTTP, composição de dados, conflito, sala/usuário inexistente, sala inativa, confirmação, **falha de serviço dependente** e limpeza.
+- **Abas de CRUD** de cada serviço, o histórico de requisições (corpo enviado e resposta) e, com `--local`, os **logs reais** dos 3 processos, com as chamadas `reservas -> salas/usuarios` destacadas.
+
+> Na nuvem, para demonstrar a falha, suspenda o `servico-salas` no Render (**Settings → Suspend Web Service**) e depois reative. Localmente, com `--local`, basta clicar em **Derrubar salas**.
+
 ### Script de ponta a ponta (20 verificações)
 
 ```bash
@@ -253,7 +269,9 @@ curl -X PATCH localhost:3000/reservas/1/status -H "Content-Type: application/jso
 │       └── .env.example
 ├── scripts/
 │   ├── dev.js                 # sobe os 3 serviços localmente
+│   ├── painel.js              # servidor do painel de demonstração (proxy + logs ao vivo)
 │   └── testar-api.js          # teste de ponta a ponta (local ou nuvem)
+├── painel/index.html          # interface web para testar e apresentar os serviços
 ├── docs/
 │   ├── arquitetura.svg / .png # diagrama
 │   └── prints/                # evidências

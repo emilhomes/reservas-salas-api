@@ -1,0 +1,954 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Painel dos Microsserviços</title>
+<style>
+  :root {
+    --bg: #f3f4f7; --card: #fff; --tx: #1c2230; --mut: #5d6678; --bd: #dce0e8; --suave: #f7f8fa;
+    --salas: #0e7490; --usuarios: #7c3aed; --reservas: #c2410c; --cliente: #334155;
+    --ok: #15803d; --okbg: #dcfce7; --err: #b91c1c; --errbg: #fee2e2; --warn: #a16207; --warnbg: #fef3c7;
+    --info: #1d4ed8; --infobg: #dbeafe;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--tx); font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  code, pre, .mono { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 13px; }
+  h1 { font-size: 20px; margin: 0; }
+  h2 { font-size: 16px; margin: 0 0 10px; }
+  h3 { font-size: 15px; margin: 0; }
+  button { font: inherit; cursor: pointer; border: 1px solid var(--bd); background: var(--card); color: var(--tx); border-radius: 8px; padding: 6px 12px; }
+  button:hover { background: var(--suave); }
+  button.primario { background: var(--info); border-color: var(--info); color: #fff; }
+  button.primario:hover { filter: brightness(1.1); }
+  button.perigo { color: var(--err); border-color: #f3b4b4; }
+  button.pequeno { padding: 3px 8px; font-size: 13px; }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  input, select { font: inherit; padding: 6px 8px; border: 1px solid var(--bd); border-radius: 8px; background: #fff; color: var(--tx); min-width: 0; }
+  label { display: flex; flex-direction: column; gap: 3px; font-size: 13px; color: var(--mut); }
+  label.check { flex-direction: row; align-items: center; gap: 6px; }
+
+  header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 20px; background: var(--card); border-bottom: 1px solid var(--bd); }
+  header p { margin: 2px 0 0; color: var(--mut); font-size: 13px; }
+  .alternador { display: inline-flex; border: 1px solid var(--bd); border-radius: 10px; overflow: hidden; }
+  .alternador button { border: 0; border-radius: 0; padding: 7px 14px; }
+  .alternador button.ativo { background: var(--tx); color: #fff; }
+
+  main { max-width: 1500px; margin: 0 auto; padding: 16px; display: grid; gap: 16px; grid-template-columns: minmax(0, 1.55fr) minmax(320px, 1fr); }
+  @media (max-width: 1000px) { main { grid-template-columns: minmax(0, 1fr); } }
+  .card { background: var(--card); border: 1px solid var(--bd); border-radius: 12px; padding: 16px; }
+  .col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+
+  /* Diagrama */
+  #diagrama { width: 100%; height: auto; display: block; }
+  .caixa rect.fundo { fill: #fff; stroke-width: 2.5; }
+  .caixa text { font-family: system-ui, sans-serif; }
+  .caixa .nome { font-size: 19px; font-weight: 700; }
+  .caixa .sub { font-size: 12.5px; fill: var(--mut); }
+  .caixa.pisca-ok rect.fundo { fill: var(--okbg); }
+  .caixa.pisca-erro rect.fundo { fill: var(--errbg); }
+  .caixa.pisca-aviso rect.fundo { fill: var(--warnbg); }
+  .caixa rect.fundo { transition: fill .25s; }
+  .seta { fill: none; stroke: #a7aebb; stroke-width: 2; transition: stroke .2s, stroke-width .2s; }
+  .seta.interna { stroke-dasharray: 6 5; }
+  .seta.ativa { stroke: var(--info); stroke-width: 3.5; }
+  .rotulo { font-size: 12px; fill: var(--mut); font-family: system-ui, sans-serif; }
+  .rotulo.forte { fill: var(--tx); font-weight: 600; }
+  .rotulo.ok { fill: var(--ok); font-weight: 600; }
+  .rotulo.erro { fill: var(--err); font-weight: 600; }
+  .pulso { fill: var(--info); }
+  .pulso.ok { fill: var(--ok); }
+  .pulso.erro { fill: var(--err); }
+  .pulso.aviso { fill: var(--warn); }
+  .ponto { stroke: #fff; stroke-width: 2; }
+  .ponto.ok { fill: var(--ok); }
+  .ponto.erro { fill: var(--err); }
+  .ponto.acordando { fill: #eab308; }
+  .ponto.desconhecido { fill: #9ca3af; }
+  .banco path, .banco ellipse { fill: #eef1f6; stroke: #8a93a3; stroke-width: 1.5; }
+  .banco text { font-size: 11.5px; fill: var(--mut); font-family: ui-monospace, Consolas, monospace; }
+
+  #narracao { margin-top: 10px; padding: 10px 12px; border-radius: 10px; background: var(--suave); border: 1px solid var(--bd); font-size: 14px; min-height: 44px; }
+  #narracao ol { margin: 4px 0 0; padding-left: 20px; }
+  .chips { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
+  @media (max-width: 700px) { .chips { grid-template-columns: 1fr; } }
+  .chip { border: 1px solid var(--bd); border-left: 5px solid; border-radius: 10px; padding: 8px 10px; font-size: 13px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .chip a { color: var(--mut); overflow-wrap: anywhere; }
+  .chip .acoes { display: flex; gap: 6px; flex-wrap: wrap; }
+
+  /* Abas */
+  .abas { display: flex; gap: 4px; border-bottom: 1px solid var(--bd); margin: -4px 0 14px; flex-wrap: wrap; }
+  .abas button { border: 0; border-bottom: 3px solid transparent; border-radius: 0; padding: 8px 12px; background: none; color: var(--mut); }
+  .abas button.ativo { color: var(--tx); border-bottom-color: var(--info); font-weight: 600; }
+  .aba { display: none; }
+  .aba.ativa { display: block; }
+
+  /* Roteiro */
+  .passo { border: 1px solid var(--bd); border-radius: 10px; padding: 12px; margin-bottom: 10px; display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 4px 12px; align-items: start; }
+  .passo .num { width: 30px; height: 30px; border-radius: 50%; background: var(--suave); border: 1px solid var(--bd); display: grid; place-items: center; font-weight: 700; }
+  .passo.ok .num { background: var(--ok); color: #fff; border-color: var(--ok); }
+  .passo.falhou .num { background: var(--err); color: #fff; border-color: var(--err); }
+  .passo .mostra { color: var(--mut); font-size: 13.5px; margin: 3px 0; }
+  .passo .chamadas { font-size: 12.5px; }
+  .passo .resultado { grid-column: 2 / 4; font-size: 13.5px; }
+  .passo .resultado:empty { display: none; }
+  .passo.especial { border-color: #f3c27a; background: #fffcf5; }
+  .passo .botoes { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .passo ol { margin: 6px 0; padding-left: 20px; font-size: 13.5px; }
+  .barra-roteiro { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+  .barra-roteiro .dica { color: var(--mut); font-size: 13px; }
+
+  /* CRUD */
+  form.linha { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; margin-bottom: 12px; padding: 10px; background: var(--suave); border-radius: 10px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--bd); vertical-align: middle; }
+  th { color: var(--mut); font-weight: 600; font-size: 12.5px; }
+  td.acoes { white-space: nowrap; text-align: right; }
+  .tabela { overflow-x: auto; }
+  .vazio { color: var(--mut); padding: 12px 0; font-size: 13.5px; }
+  .nota { color: var(--mut); font-size: 13px; margin: 0 0 10px; }
+
+  /* Pílulas */
+  .pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+  .s-2 { background: var(--okbg); color: var(--ok); }
+  .s-4 { background: var(--warnbg); color: var(--warn); }
+  .s-5, .s-0 { background: var(--errbg); color: var(--err); }
+  .s-pend { background: var(--suave); color: var(--mut); }
+  .st-PENDENTE { background: var(--warnbg); color: var(--warn); }
+  .st-CONFIRMADA { background: var(--okbg); color: var(--ok); }
+  .st-CANCELADA { background: #e5e7eb; color: #4b5563; }
+  .svc { display: inline-block; padding: 0 7px; border-radius: 6px; font-size: 12px; font-weight: 700; color: #fff; }
+  .svc-salas { background: var(--salas); } .svc-usuarios { background: var(--usuarios); } .svc-reservas { background: var(--reservas); }
+  .metodo { font-weight: 700; font-size: 12px; min-width: 50px; display: inline-block; }
+  .m-GET { color: var(--info); } .m-POST { color: var(--ok); } .m-PUT, .m-PATCH { color: var(--warn); } .m-DELETE { color: var(--err); }
+
+  /* Requisições e logs */
+  #requisicoes { max-height: 52vh; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+  .req { border: 1px solid var(--bd); border-radius: 8px; padding: 6px 8px; font-size: 13px; }
+  .req.nova { animation: entrar .4s; }
+  @keyframes entrar { from { background: var(--infobg); } to { background: #fff; } }
+  .req .linha1 { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .req code { overflow-wrap: anywhere; }
+  .req .ms { color: var(--mut); margin-left: auto; font-size: 12px; }
+  .req details { margin-top: 4px; }
+  .req summary { color: var(--mut); cursor: pointer; font-size: 12px; }
+  pre { background: #10151f; color: #dbe3ef; padding: 8px 10px; border-radius: 8px; overflow: auto; max-height: 280px; margin: 4px 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .rotulo-pre { font-size: 12px; color: var(--mut); margin-top: 6px; }
+  #logs { max-height: 34vh; overflow-y: auto; background: #10151f; border-radius: 8px; padding: 8px 10px; font-size: 12.5px; color: #c9d3e1; }
+  #logs div { white-space: pre-wrap; overflow-wrap: anywhere; }
+  #logs .l-salas b { color: #67e8f9; } #logs .l-usuarios b { color: #c4b5fd; } #logs .l-reservas b { color: #fdba74; }
+  #logs .interna { color: #fff; background: #1e3a5f; }
+  #logs .falha { color: #fca5a5; }
+  .cabecalho-card { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .cabecalho-card h2 { margin: 0; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>🏫 Reserva de Salas · Módulo 2: Microsserviços</h1>
+    <p>3 serviços independentes (salas, usuários, reservas), cada um com seu banco, conversando via HTTP/REST síncrono.</p>
+  </div>
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+    <span style="font-size:13px;color:var(--mut)">Testar contra:</span>
+    <div class="alternador" id="alternador">
+      <button data-alvo="nuvem">☁️ Nuvem (Render)</button>
+      <button data-alvo="local">💻 Local</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="col">
+    <section class="card">
+      <h2>Arquitetura ao vivo</h2>
+      <svg id="diagrama" viewBox="0 0 960 400" role="img" aria-label="Diagrama: cliente chama os serviços; reservas chama salas e usuários">
+        <defs>
+          <marker id="ponta" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="#a7aebb"/>
+          </marker>
+        </defs>
+
+        <!-- setas -->
+        <path id="c-reservas" class="seta" d="M170,190 L358,190" marker-end="url(#ponta)"/>
+        <path id="c-salas" class="seta" d="M95,155 C95,60 420,40 698,72" marker-end="url(#ponta)"/>
+        <path id="c-usuarios" class="seta" d="M95,225 C95,370 430,385 698,318" marker-end="url(#ponta)"/>
+        <path id="r-salas" class="seta interna" d="M580,165 L698,100" marker-end="url(#ponta)"/>
+        <path id="r-usuarios" class="seta interna" d="M580,215 L698,290" marker-end="url(#ponta)"/>
+        <line x1="470" y1="235" x2="470" y2="262" stroke="#8a93a3" stroke-width="1.5"/>
+        <line x1="880" y1="80" x2="898" y2="80" stroke="#8a93a3" stroke-width="1.5"/>
+        <line x1="880" y1="310" x2="898" y2="310" stroke="#8a93a3" stroke-width="1.5"/>
+
+        <text class="rotulo" x="264" y="180" text-anchor="middle">HTTP</text>
+        <text class="rotulo" x="300" y="56" text-anchor="middle">HTTP (CRUD de salas)</text>
+        <text class="rotulo" x="300" y="358" text-anchor="middle">HTTP (CRUD de usuários)</text>
+        <text class="rotulo forte" x="600" y="118" text-anchor="middle">GET /salas/:id</text>
+        <text class="rotulo" id="rotulo-r-salas" x="600" y="134" text-anchor="middle"></text>
+        <text class="rotulo forte" x="600" y="272" text-anchor="middle">GET /usuarios/:id</text>
+        <text class="rotulo" id="rotulo-r-usuarios" x="600" y="288" text-anchor="middle"></text>
+
+        <!-- caixas -->
+        <g class="caixa" id="caixa-cliente">
+          <rect class="fundo" x="20" y="155" width="150" height="70" rx="12" stroke="var(--cliente)"/>
+          <text class="nome" x="95" y="186" text-anchor="middle">Cliente</text>
+          <text class="sub" x="95" y="206" text-anchor="middle">este painel</text>
+        </g>
+        <g class="caixa" id="caixa-reservas">
+          <rect class="fundo" x="360" y="145" width="220" height="90" rx="12" stroke="var(--reservas)"/>
+          <text class="nome" x="470" y="180" text-anchor="middle" fill="var(--reservas)">reservas</text>
+          <text class="sub" x="470" y="200" text-anchor="middle">entidade central + regras</text>
+          <text class="sub" x="470" y="218" text-anchor="middle" id="porta-reservas"></text>
+          <circle class="ponto desconhecido" id="ponto-reservas" cx="566" cy="159" r="8"/>
+        </g>
+        <g class="caixa" id="caixa-salas">
+          <rect class="fundo" x="700" y="40" width="180" height="80" rx="12" stroke="var(--salas)"/>
+          <text class="nome" x="790" y="72" text-anchor="middle" fill="var(--salas)">salas</text>
+          <text class="sub" x="790" y="92" text-anchor="middle">cadastro de salas</text>
+          <text class="sub" x="790" y="108" text-anchor="middle" id="porta-salas"></text>
+          <circle class="ponto desconhecido" id="ponto-salas" cx="866" cy="54" r="8"/>
+        </g>
+        <g class="caixa" id="caixa-usuarios">
+          <rect class="fundo" x="700" y="270" width="180" height="80" rx="12" stroke="var(--usuarios)"/>
+          <text class="nome" x="790" y="302" text-anchor="middle" fill="var(--usuarios)">usuarios</text>
+          <text class="sub" x="790" y="322" text-anchor="middle">quem reserva</text>
+          <text class="sub" x="790" y="338" text-anchor="middle" id="porta-usuarios"></text>
+          <circle class="ponto desconhecido" id="ponto-usuarios" cx="866" cy="284" r="8"/>
+        </g>
+
+        <!-- bancos -->
+        <g class="banco">
+          <path d="M435,268 v28 a35,8 0 0 0 70,0 v-28"/><ellipse cx="470" cy="268" rx="35" ry="8"/>
+          <text x="470" y="322" text-anchor="middle">reservas_db</text>
+        </g>
+        <g class="banco">
+          <path d="M900,68 v24 a26,7 0 0 0 52,0 v-24"/><ellipse cx="926" cy="68" rx="26" ry="7"/>
+          <text x="926" y="118" text-anchor="middle">salas_db</text>
+        </g>
+        <g class="banco">
+          <path d="M900,298 v24 a26,7 0 0 0 52,0 v-24"/><ellipse cx="926" cy="298" rx="26" ry="7"/>
+          <text x="926" y="348" text-anchor="middle">usuarios_db</text>
+        </g>
+        <g id="camada-pulsos"></g>
+      </svg>
+
+      <div id="narracao">Execute um passo do roteiro ou use as abas de cada serviço. Aqui aparece, passo a passo, quem chamou quem.</div>
+      <div class="chips" id="chips"></div>
+    </section>
+
+    <section class="card">
+      <div class="abas" id="abas">
+        <button data-aba="roteiro" class="ativo">🎬 Roteiro da apresentação</button>
+        <button data-aba="salas">Salas</button>
+        <button data-aba="usuarios">Usuários</button>
+        <button data-aba="reservas">Reservas</button>
+      </div>
+
+      <div class="aba ativa" id="aba-roteiro">
+        <div class="barra-roteiro">
+          <button class="primario" id="executar-tudo">▶ Executar passos 1 a 10</button>
+          <button id="reiniciar-roteiro">↺ Recomeçar</button>
+          <span class="dica" id="dica-roteiro"></span>
+        </div>
+        <div id="passos"></div>
+      </div>
+
+      <div class="aba" id="aba-salas">
+        <p class="nota">Serviço <b>salas</b> sozinho: o painel fala direto com ele, sem passar por reservas. Dados no banco <code>salas_db</code>.</p>
+        <form class="linha" id="form-salas">
+          <label>Nome<input name="nome" required maxlength="100" placeholder="Laboratório 01"></label>
+          <label>Capacidade<input name="capacidade" type="number" min="1" required value="30" style="width:100px"></label>
+          <label>Localização<input name="localizacao" placeholder="Bloco B"></label>
+          <label class="check"><input type="checkbox" name="ativa" checked> ativa</label>
+          <button class="primario" type="submit">Criar (POST)</button>
+          <button type="button" data-cancelar hidden>Cancelar edição</button>
+        </form>
+        <div class="cabecalho-card"><h3>Salas cadastradas</h3><button class="pequeno" data-recarregar="salas">↻ GET /salas</button></div>
+        <div class="tabela" id="tabela-salas"></div>
+      </div>
+
+      <div class="aba" id="aba-usuarios">
+        <p class="nota">Serviço <b>usuarios</b> sozinho: o painel fala direto com ele. Dados no banco <code>usuarios_db</code>.</p>
+        <form class="linha" id="form-usuarios">
+          <label>Nome<input name="nome" required maxlength="100" placeholder="Maria"></label>
+          <label>Email<input name="email" type="email" required placeholder="maria@uern.br"></label>
+          <label>Tipo<select name="tipo"><option>ALUNO</option><option selected>PROFESSOR</option><option>SERVIDOR</option></select></label>
+          <button class="primario" type="submit">Criar (POST)</button>
+          <button type="button" data-cancelar hidden>Cancelar edição</button>
+        </form>
+        <div class="cabecalho-card"><h3>Usuários cadastrados</h3><button class="pequeno" data-recarregar="usuarios">↻ GET /usuarios</button></div>
+        <div class="tabela" id="tabela-usuarios"></div>
+      </div>
+
+      <div class="aba" id="aba-reservas">
+        <p class="nota">Ao criar ou editar, o serviço <b>reservas</b> consulta <b>salas</b> e <b>usuarios</b> via HTTP antes de gravar no <code>reservas_db</code>. Os IDs abaixo vêm dos outros serviços; reservas não tem acesso aos bancos deles.</p>
+        <form class="linha" id="form-reservas">
+          <label>Sala<select name="sala_id" id="sel-sala" required></select></label>
+          <label>Usuário<select name="usuario_id" id="sel-usuario" required></select></label>
+          <label>Início<input name="inicio" type="datetime-local" required></label>
+          <label>Fim<input name="fim" type="datetime-local" required></label>
+          <label hidden data-so-edicao>Status<select name="status"><option>PENDENTE</option><option>CONFIRMADA</option><option>CANCELADA</option></select></label>
+          <button class="primario" type="submit">Criar (POST)</button>
+          <button type="button" data-cancelar hidden>Cancelar edição</button>
+        </form>
+        <div class="cabecalho-card"><h3>Reservas</h3><button class="pequeno" data-recarregar="reservas">↻ GET /reservas</button></div>
+        <p class="nota">A listagem mostra só os IDs: buscar sala e usuário de cada linha geraria 2 chamadas HTTP por reserva (problema N+1). Use <b>Detalhar</b> para ver a reserva com os dados compostos.</p>
+        <div class="tabela" id="tabela-reservas"></div>
+        <div id="detalhe-reserva"></div>
+      </div>
+    </section>
+  </div>
+
+  <div class="col">
+    <section class="card">
+      <div class="cabecalho-card"><h2>Requisições HTTP</h2><button class="pequeno" id="limpar-req">Limpar</button></div>
+      <div id="requisicoes"><div class="vazio">Nenhuma requisição ainda.</div></div>
+    </section>
+    <section class="card">
+      <div class="cabecalho-card"><h2>Logs dos serviços</h2><button class="pequeno" id="limpar-logs">Limpar</button></div>
+      <p class="nota" id="nota-logs"></p>
+      <div id="logs"></div>
+    </section>
+  </div>
+</main>
+
+<script>
+const SERVICOS = ["salas", "usuarios", "reservas"];
+const NOMES = { salas: "salas", usuarios: "usuários", reservas: "reservas" };
+const TEXTO_STATUS = { 200: "OK", 201: "Criado", 204: "Sem conteúdo", 400: "Requisição inválida", 404: "Não encontrado", 409: "Conflito", 422: "Não processável", 500: "Erro interno", 502: "Sem resposta", 503: "Serviço indisponível" };
+const SVGNS = "http://www.w3.org/2000/svg";
+
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
+const classeStatus = (s) => (s >= 200 && s < 300 ? "ok" : s >= 400 && s < 500 ? "aviso" : "erro");
+const pill = (s) => `<span class="pill s-${String(s)[0]}">${s || "—"} ${TEXTO_STATUS[s] || ""}</span>`;
+const dataBR = (s) => new Date(s).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+const json = (d) => esc(JSON.stringify(d, null, 2));
+
+let config = { alvos: {}, gerenciarLocal: false, estados: {} };
+let alvo = "nuvem";
+let seq = 0;
+
+// Com o painel gerenciando os serviços locais, as setas internas (reservas -> salas/usuarios)
+// são animadas a partir dos LOGS REAIS do serviço de reservas. Na nuvem, são deduzidas da rota.
+const logsReais = () => alvo === "local" && config.gerenciarLocal;
+
+// ===================== Chamadas HTTP =====================
+async function pedir(servico, metodo, caminho, corpo) {
+  const inicio = performance.now();
+  let status = 0, dados = null, destino = "", erroPainel = false;
+  try {
+    const r = await fetch(`/api/${alvo}/${servico}${caminho}`, {
+      method: metodo,
+      headers: { "Content-Type": "application/json" },
+      body: corpo ? JSON.stringify(corpo) : undefined,
+    });
+    status = r.status;
+    destino = r.headers.get("X-Destino") || "";
+    erroPainel = r.headers.has("X-Erro-Painel");
+    const texto = await r.text();
+    try { dados = texto ? JSON.parse(texto) : null; } catch { dados = texto; }
+  } catch (e) {
+    dados = { erro: "O servidor do painel não respondeu: " + e.message };
+    erroPainel = true;
+  }
+  return { status, dados, destino, erroPainel, ms: Math.round(performance.now() - inicio) };
+}
+
+// Chamada "visível": entra no histórico, anima o diagrama e narra o que aconteceu.
+async function chamar(servico, metodo, caminho, corpo) {
+  const el = registrarInicio(servico, metodo, caminho, corpo);
+  animar(`c-${servico}`, "ida");
+  const r = await pedir(servico, metodo, caminho, corpo);
+  registrarFim(el, r);
+  mostrarResposta(servico, metodo, caminho, corpo, r);
+  return r;
+}
+
+// O serviço de reservas consulta salas e usuários nessas rotas (ver services/reservas/src/reservas.js).
+function chamaOutrosServicos(servico, metodo, caminho, status) {
+  if (servico !== "reservas") return false;
+  if (caminho === "/health") return true;
+  const detalhe = /^\/reservas\/\d+$/.test(caminho);
+  if (metodo === "POST" && caminho === "/reservas") return [201, 409, 422, 503].includes(status);
+  if (metodo === "PUT" && detalhe) return [200, 409, 422, 503].includes(status);
+  if (metodo === "GET" && detalhe) return status === 200;
+  return false;
+}
+
+async function mostrarResposta(servico, metodo, caminho, corpo, r) {
+  const internas = chamaOutrosServicos(servico, metodo, caminho, r.status);
+  narrar(servico, metodo, caminho, corpo, r, internas);
+  if (internas && (!logsReais() || caminho === "/health")) {
+    const falhou = (s) => (r.status === 503 && r.dados?.servico === s) || (r.dados?.dependencias && r.dados.dependencias[s] !== "ok") || (r.dados?.avisos || []).some((a) => a.includes(s));
+    await Promise.all(["salas", "usuarios"].map((s) => animar(`r-${s}`, "ida")));
+    await Promise.all(["salas", "usuarios"].map((s) => animar(`r-${s}`, "volta", falhou(s) ? "erro" : "ok")));
+  }
+  piscar(servico, classeStatus(r.status));
+  animar(`c-${servico}`, "volta", classeStatus(r.status));
+}
+
+function narrar(servico, metodo, caminho, corpo, r, internas) {
+  const passos = [`<b>Cliente → ${NOMES[servico]}</b>: <code>${metodo} ${esc(caminho)}</code>`];
+  if (internas) {
+    if (caminho === "/health") {
+      const dep = r.dados?.dependencias || {};
+      passos.push(`<b>reservas → salas</b> e <b>reservas → usuários</b>: <code>GET /health</code> em cada um (salas: <b>${esc(dep.salas ?? "?")}</b>, usuários: <b>${esc(dep.usuarios ?? "?")}</b>)`);
+    } else {
+      const ids = metodo === "GET" ? { sala: r.dados?.sala_id, usuario: r.dados?.usuario_id } : { sala: corpo?.sala_id, usuario: corpo?.usuario_id };
+      passos.push(`<b>reservas → salas</b> <code>GET /salas/${ids.sala ?? ":id"}</code> e <b>reservas → usuários</b> <code>GET /usuarios/${ids.usuario ?? ":id"}</code>, <b>em paralelo</b> (HTTP síncrono)`);
+      if (r.status === 503) passos.push(`O serviço de <b>${esc(r.dados?.servico)}</b> não respondeu (timeout/nova tentativa esgotados) → reservas devolve <b>503</b> com mensagem amigável`);
+      else if (r.status === 422) passos.push(`Um dos serviços disse que o recurso não existe ou a sala está inativa → reservas recusa com <b>422</b> e <b>não grava nada</b>`);
+      else if (r.status === 409) passos.push(`Sala e usuário existem, mas reservas encontrou conflito de horário no próprio banco → <b>409</b>`);
+      else if (metodo !== "GET") passos.push(`Tudo válido → reservas grava no <b>reservas_db</b>`);
+      else if (r.dados?.avisos) passos.push(`Algum serviço falhou → a reserva volta assim mesmo, com <b>avisos</b> (degradação graciosa)`);
+      else passos.push(`reservas junta os dados das 3 fontes numa só resposta (composição via API)`);
+    }
+  } else if (r.erroPainel) {
+    passos.push(`<span style="color:var(--err)">${esc(r.dados?.erro)}</span>`);
+  } else {
+    passos.push(`Só o serviço <b>${NOMES[servico]}</b> e o banco <b>${servico}_db</b> participaram`);
+  }
+  passos.push(`Resposta: ${pill(r.status)} em ${r.ms} ms${r.dados?.erro && !r.erroPainel ? ` · <i>"${esc(r.dados.erro)}"</i>` : ""}`);
+  $("#narracao").innerHTML = `<b>O que aconteceu</b><ol>${passos.map((p) => `<li>${p}</li>`).join("")}</ol>`;
+}
+
+// ===================== Histórico de requisições =====================
+function registrarInicio(servico, metodo, caminho, corpo) {
+  const box = $("#requisicoes");
+  $(".vazio", box)?.remove();
+  const el = document.createElement("div");
+  el.className = "req nova";
+  el.innerHTML = `<div class="linha1"><span class="metodo m-${metodo}">${metodo}</span><span class="svc svc-${servico}">${servico}</span><code>${esc(caminho)}</code><span class="pill s-pend">aguardando…</span><span class="ms">#${++seq}</span></div>`;
+  el._corpo = corpo;
+  box.prepend(el);
+  while (box.children.length > 60) box.lastChild.remove();
+  return el;
+}
+
+function registrarFim(el, r) {
+  $(".pill", el).outerHTML = pill(r.status);
+  $(".ms", el).textContent = `${r.ms} ms`;
+  el.insertAdjacentHTML("beforeend", `<details><summary>ver detalhes</summary>
+    <div class="rotulo-pre">Destino: <code>${esc(r.destino)}</code></div>
+    ${el._corpo ? `<div class="rotulo-pre">Corpo enviado</div><pre>${json(el._corpo)}</pre>` : ""}
+    <div class="rotulo-pre">Resposta</div><pre>${r.dados === null ? "(sem corpo)" : json(r.dados)}</pre></details>`);
+}
+
+// ===================== Diagrama =====================
+function animar(idCaminho, sentido, classe = "") {
+  return new Promise((resolve) => {
+    const p = document.getElementById(idCaminho);
+    if (!p) return resolve();
+    const tam = p.getTotalLength();
+    const bola = document.createElementNS(SVGNS, "circle");
+    bola.setAttribute("r", 7);
+    bola.setAttribute("class", `pulso ${classe}`);
+    $("#camada-pulsos").appendChild(bola);
+    p.classList.add("ativa");
+    const dur = 550, t0 = performance.now();
+    (function passo(t) {
+      const k = Math.min(1, (t - t0) / dur);
+      const pt = p.getPointAtLength((sentido === "ida" ? k : 1 - k) * tam);
+      bola.setAttribute("cx", pt.x);
+      bola.setAttribute("cy", pt.y);
+      if (k < 1) return requestAnimationFrame(passo);
+      bola.remove();
+      setTimeout(() => p.classList.remove("ativa"), 250);
+      resolve();
+    })(t0);
+  });
+}
+
+function piscar(servico, classe) {
+  const g = $(`#caixa-${servico}`);
+  if (!g) return;
+  g.classList.add(`pisca-${classe}`);
+  setTimeout(() => g.classList.remove(`pisca-${classe}`), 900);
+}
+
+function marcarSaude(servico, estado, texto) {
+  $(`#ponto-${servico}`).setAttribute("class", `ponto ${estado}`);
+  const el = $(`#saude-${servico}`);
+  if (el) el.innerHTML = texto;
+}
+
+async function verificarSaude() {
+  const alvoAtual = alvo;
+  await Promise.all(SERVICOS.map(async (s) => {
+    const espera = setTimeout(() => marcarSaude(s, "acordando", "⏳ acordando (cold start)…"), 2500);
+    const r = await pedir(s, "GET", "/health");
+    clearTimeout(espera);
+    if (alvoAtual !== alvo) return;
+    if (r.status === 200) marcarSaude(s, "ok", `🟢 no ar · banco ${esc(r.dados?.banco)} (${r.ms} ms)`);
+    else marcarSaude(s, "erro", `🔴 ${r.erroPainel ? "fora do ar" : `HTTP ${r.status}`}`);
+    if (s === "reservas") {
+      for (const dep of ["salas", "usuarios"]) {
+        const v = r.dados?.dependencias?.[dep];
+        const t = $(`#rotulo-r-${dep}`);
+        t.textContent = v ? `visto por reservas: ${v}` : "";
+        t.setAttribute("class", `rotulo ${v === "ok" ? "ok" : v ? "erro" : ""}`);
+      }
+    }
+  }));
+}
+
+function montarChips() {
+  const urls = config.alvos[alvo] || {};
+  $("#chips").innerHTML = SERVICOS.map((s) => `
+    <div class="chip" style="border-left-color:var(--${s})">
+      <b>${s}</b>
+      <a href="${esc(urls[s])}" target="_blank" rel="noopener">${esc(urls[s])}</a>
+      <span id="saude-${s}">⚪ verificando…</span>
+      ${logsReais() ? `<span>processo: <b id="proc-${s}">${esc(config.estados[s])}</b></span>
+        <div class="acoes"><button class="pequeno perigo" data-proc="${s}" data-acao="parar">⏹ Derrubar</button><button class="pequeno" data-proc="${s}" data-acao="iniciar">▶ Religar</button></div>` : ""}
+    </div>`).join("");
+  for (const s of SERVICOS) {
+    $(`#porta-${s}`).textContent = alvo === "local" ? urls[s]?.replace("http://", "") : "Render";
+  }
+  atualizarBotoesProcesso();
+}
+
+function atualizarBotoesProcesso() {
+  for (const s of SERVICOS) {
+    const est = config.estados[s];
+    const p = $(`#proc-${s}`);
+    if (p) p.textContent = est;
+    $$(`[data-proc="${s}"]`).forEach((b) => {
+      b.disabled = b.dataset.acao === "parar" ? est === "parado" : est !== "parado";
+    });
+  }
+}
+
+async function processo(servico, acao) {
+  await fetch(`/processo/${servico}/${acao}`, { method: "POST" });
+}
+
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-proc]");
+  if (b) processo(b.dataset.proc, b.dataset.acao);
+});
+
+// ===================== Logs ao vivo (SSE) =====================
+function conectarEventos() {
+  const fonte = new EventSource("/eventos");
+  fonte.onmessage = (m) => {
+    const ev = JSON.parse(m.data);
+    if (ev.tipo === "estado") {
+      config.estados[ev.servico] = ev.estado;
+      atualizarBotoesProcesso();
+      setTimeout(verificarSaude, ev.estado === "rodando" ? 300 : 800);
+    } else if (ev.tipo === "log") {
+      adicionarLog(ev);
+    }
+  };
+}
+
+function adicionarLog({ servico, linha, hora }) {
+  const box = $("#logs");
+  const interna = linha.match(/^\[reservas -> (salas|usuarios)\]/);
+  const falha = /falhou|indisponível|503|erro|encerrado/i.test(linha);
+  const el = document.createElement("div");
+  el.className = `l-${servico} ${interna ? "interna" : ""} ${falha ? "falha" : ""}`;
+  const h = new Date(hora).toLocaleTimeString("pt-BR");
+  el.innerHTML = `<span style="opacity:.55">${h}</span> <b>[${servico}]</b> ${esc(linha)}`;
+  box.appendChild(el);
+  while (box.children.length > 300) box.firstChild.remove();
+  box.scrollTop = box.scrollHeight;
+
+  // Seta interna animada a partir do log real do serviço de reservas.
+  if (interna && logsReais() && Date.now() - hora < 5000) {
+    const dep = interna[1];
+    const st = linha.match(/-> HTTP (\d+)/);
+    animar(`r-${dep}`, "ida").then(() => animar(`r-${dep}`, "volta", st ? classeStatus(+st[1]) : "erro"));
+  }
+}
+
+// ===================== Roteiro da apresentação =====================
+let est; // estado do roteiro: o que já foi criado
+function novoEstado() {
+  // Dia aleatório no futuro, para não colidir com reservas de execuções anteriores.
+  const dia = new Date();
+  dia.setDate(dia.getDate() + 30 + Math.floor(Math.random() * 300));
+  return { dia, sala: null, usuario: null, reserva: null, salaInativa: null, criados: { reservas: [], salas: [], usuarios: [] } };
+}
+const horario = (h) => { const d = new Date(est.dia); d.setHours(h, 0, 0, 0); return d.toISOString(); };
+const sufixo = () => Math.random().toString(36).slice(2, 6).toUpperCase();
+const res = (r, esperado, msgOk) => ({ ok: r.status === esperado, status: r.status, resumo: r.status === esperado && msgOk ? msgOk : r.dados?.erro || "", dados: r.dados });
+
+const PASSOS = [
+  {
+    id: "saude", titulo: "Os 3 serviços estão no ar, cada um com seu banco",
+    mostra: "Cada serviço é um processo separado, com URL e banco próprios. O /health de reservas também diz se ele consegue falar com salas e usuários. Na nuvem, o primeiro acesso pode levar ~1 min (cold start do Render).",
+    chamadas: "GET /health em salas, usuarios e reservas", esperado: "200 ×3",
+    async executar() {
+      const rs = [];
+      for (const s of SERVICOS) rs.push(await chamar(s, "GET", "/health"));
+      verificarSaude();
+      const dep = rs[2].dados?.dependencias;
+      return { ok: rs.every((r) => r.status === 200), status: rs.map((r) => r.status).join(" / "),
+        resumo: dep ? `reservas enxerga → salas: ${dep.salas}, usuários: ${dep.usuarios}` : "", dados: rs.map((r) => r.dados) };
+    },
+  },
+  {
+    id: "sala", titulo: "Cadastrar uma sala no serviço de salas",
+    mostra: "O CRUD de salas vive só no serviço de salas. Reservas não sabe nada sobre essa tabela.",
+    chamadas: "POST /salas  (cliente → salas)", esperado: 201,
+    async executar() {
+      const r = await chamar("salas", "POST", "/salas", { nome: `Laboratório Demo ${sufixo()}`, capacidade: 30, localizacao: "Bloco B" });
+      if (r.status === 201) { est.sala = r.dados; est.criados.salas.push(r.dados.id); }
+      return res(r, 201, `Sala #${r.dados?.id} "${r.dados?.nome}" gravada no salas_db`);
+    },
+  },
+  {
+    id: "usuario", titulo: "Cadastrar um usuário no serviço de usuários",
+    mostra: "Outro serviço, outro banco. Também não depende de ninguém.",
+    chamadas: "POST /usuarios  (cliente → usuarios)", esperado: 201,
+    async executar() {
+      const s = sufixo().toLowerCase();
+      const r = await chamar("usuarios", "POST", "/usuarios", { nome: `Profa. Demo ${s}`, email: `demo.${s}@uern.br`, tipo: "PROFESSOR" });
+      if (r.status === 201) { est.usuario = r.dados; est.criados.usuarios.push(r.dados.id); }
+      return res(r, 201, `Usuário #${r.dados?.id} "${r.dados?.nome}" gravado no usuarios_db`);
+    },
+  },
+  {
+    id: "reserva", titulo: "Criar uma reserva: reservas consulta os outros dois serviços",
+    mostra: "Antes de gravar, reservas pergunta a salas se a sala existe e está ativa, e a usuários se o usuário existe. As duas chamadas saem em paralelo.",
+    chamadas: "POST /reservas → reservas faz GET /salas/:id e GET /usuarios/:id", esperado: 201,
+    async executar() {
+      await garantir("sala"); await garantir("usuario");
+      const r = await chamar("reservas", "POST", "/reservas", { sala_id: est.sala.id, usuario_id: est.usuario.id, inicio: horario(14), fim: horario(16) });
+      if (r.status === 201) { est.reserva = r.dados; est.criados.reservas.push(r.dados.id); }
+      return res(r, 201, `Reserva #${r.dados?.id} criada (${dataBR(r.dados?.inicio)} → ${dataBR(r.dados?.fim)}), status ${r.dados?.status}`);
+    },
+  },
+  {
+    id: "detalhe", titulo: "Consultar a reserva com os dados compostos",
+    mostra: "O reservas_db só guarda sala_id e usuario_id. Os dados da sala e do usuário vêm, na hora, dos outros serviços.",
+    chamadas: "GET /reservas/:id → reservas faz GET /salas/:id e GET /usuarios/:id", esperado: 200,
+    async executar() {
+      await garantir("reserva");
+      const r = await chamar("reservas", "GET", `/reservas/${est.reserva.id}`);
+      return res(r, 200, `sala: "${r.dados?.sala?.nome}" (do serviço de salas) · usuário: "${r.dados?.usuario?.nome}" (do serviço de usuários)${r.dados?.avisos ? " · avisos: " + r.dados.avisos.join("; ") : ""}`);
+    },
+  },
+  {
+    id: "conflito", titulo: "Conflito de horário na mesma sala",
+    mostra: "Sala e usuário existem (confirmado via HTTP), mas já há reserva das 14h às 16h. A regra de conflito é de reservas, no banco dele.",
+    chamadas: "POST /reservas (15h–17h, mesma sala)", esperado: 409,
+    async executar() {
+      await garantir("reserva");
+      const r = await chamar("reservas", "POST", "/reservas", { sala_id: est.sala.id, usuario_id: est.usuario.id, inicio: horario(15), fim: horario(17) });
+      if (r.status === 201) est.criados.reservas.push(r.dados.id);
+      return res(r, 409);
+    },
+  },
+  {
+    id: "sala404", titulo: "Sala que não existe",
+    mostra: "Salas responde 404 para reservas, e reservas transforma isso em 422 para o cliente. Sem chave estrangeira entre bancos: a integridade é checada via HTTP.",
+    chamadas: "POST /reservas com sala_id 999999", esperado: 422,
+    async executar() {
+      await garantir("usuario");
+      const r = await chamar("reservas", "POST", "/reservas", { sala_id: 999999, usuario_id: est.usuario.id, inicio: horario(8), fim: horario(9) });
+      return res(r, 422);
+    },
+  },
+  {
+    id: "usuario404", titulo: "Usuário que não existe",
+    mostra: "Mesma ideia, agora quem responde 404 é o serviço de usuários.",
+    chamadas: "POST /reservas com usuario_id 999999", esperado: 422,
+    async executar() {
+      await garantir("sala");
+      const r = await chamar("reservas", "POST", "/reservas", { sala_id: est.sala.id, usuario_id: 999999, inicio: horario(8), fim: horario(9) });
+      return res(r, 422);
+    },
+  },
+  {
+    id: "inativa", titulo: "Sala inativa não aceita reserva",
+    mostra: "Reservas usa um dado que pertence ao serviço de salas (o campo ativa) para aplicar a regra de negócio.",
+    chamadas: "POST /salas (ativa: false) e depois POST /reservas", esperado: 422,
+    async executar() {
+      await garantir("usuario");
+      if (!est.salaInativa) {
+        const s = await chamar("salas", "POST", "/salas", { nome: `Sala em Reforma ${sufixo()}`, capacidade: 20, localizacao: "Bloco C", ativa: false });
+        if (s.status !== 201) return res(s, 201);
+        est.salaInativa = s.dados; est.criados.salas.push(s.dados.id);
+        await dormir(400);
+      }
+      const r = await chamar("reservas", "POST", "/reservas", { sala_id: est.salaInativa.id, usuario_id: est.usuario.id, inicio: horario(10), fim: horario(11) });
+      return res(r, 422);
+    },
+  },
+  {
+    id: "confirmar", titulo: "Confirmar a reserva (mudança de estado)",
+    mostra: "PENDENTE → CONFIRMADA. Esta transição é o evento que será publicado no RabbitMQ no Módulo 4. Não depende dos outros serviços.",
+    chamadas: "PATCH /reservas/:id/status", esperado: 200,
+    async executar() {
+      await garantir("reserva");
+      const r = await chamar("reservas", "PATCH", `/reservas/${est.reserva.id}/status`, { status: "CONFIRMADA" });
+      return res(r, 200, `Reserva #${r.dados?.id} agora está ${r.dados?.status}`);
+    },
+  },
+  { id: "falha", especial: true },
+  {
+    id: "limpar", titulo: "Limpar os dados criados pelo roteiro",
+    mostra: "Apaga cada recurso no serviço dono dele: reservas em reservas, salas em salas, usuários em usuários.",
+    chamadas: "DELETE em cada serviço", esperado: "204",
+    async executar() {
+      const rs = [];
+      for (const [s, rota] of [["reservas", "reservas"], ["salas", "salas"], ["usuarios", "usuarios"]]) {
+        for (const id of est.criados[s]) rs.push(await chamar(s, "DELETE", `/${rota}/${id}`));
+      }
+      const total = rs.length;
+      est = novoEstado();
+      $$(".passo").forEach((p) => { if (p.dataset.id !== "limpar") p.classList.remove("ok", "falhou"); });
+      $$(".passo .resultado").forEach((r) => { if (r.closest(".passo").dataset.id !== "limpar") r.innerHTML = ""; });
+      return { ok: rs.every((r) => r.status === 204 || r.status === 404), status: total ? "204" : "—", resumo: total ? `${total} recurso(s) apagado(s)` : "Nada a apagar" };
+    },
+  },
+];
+
+async function garantir(id) {
+  const tem = { sala: () => est.sala, usuario: () => est.usuario, reserva: () => est.reserva }[id];
+  if (!tem()) await executarPasso(PASSOS.find((p) => p.id === id));
+  if (!tem()) throw new Error(`Não foi possível preparar: ${id}`);
+}
+
+function montarPassos() {
+  let n = 0;
+  $("#passos").innerHTML = PASSOS.map((p) => {
+    n++;
+    if (p.especial) return passoFalha(n);
+    return `<div class="passo" data-id="${p.id}">
+      <div class="num">${n}</div>
+      <div><h3>${esc(p.titulo)}</h3><div class="mostra">${esc(p.mostra)}</div>
+        <div class="chamadas"><code>${esc(p.chamadas)}</code> · esperado ${pill(p.esperado)}</div></div>
+      <button data-passo="${p.id}">Executar</button>
+      <div class="resultado"></div>
+    </div>`;
+  }).join("");
+  atualizarBotoesProcesso();
+}
+
+function passoFalha(n) {
+  let como;
+  if (logsReais()) como = `<li>Clique em <b>⏹ Derrubar salas</b> (o processo do serviço é encerrado de verdade).</li>`;
+  else if (alvo === "local") como = `<li>Pare <b>só</b> o serviço de salas (Ctrl+C no terminal dele). Dica: rode o painel com <code>npm run painel -- --local</code> para ter um botão que faz isso e ver os logs aqui.</li>`;
+  else como = `<li>No painel do Render, abra <b>servico-salas → Settings → Suspend Web Service</b>. Volte aqui quando o ponto de salas ficar vermelho.</li>`;
+  return `<div class="passo especial" data-id="falha">
+    <div class="num">${n}</div>
+    <div><h3>Serviço dependente fora do ar (tratamento de erro)</h3>
+      <div class="mostra">Reservas usa timeout e uma nova tentativa em cada chamada. Se salas não responder, o cliente recebe <b>503</b> com mensagem amigável, a consulta de reserva continua funcionando com <b>avisos</b>, e nada trava.</div>
+      <ol>${como}
+        <li>Execute A, B e C abaixo e observe as setas e os logs.</li>
+        <li>${logsReais() ? "Clique em <b>▶ Religar salas</b>" : alvo === "local" ? "Suba salas de novo" : "No Render, clique em <b>Resume Web Service</b>"}: tudo volta a funcionar <b>sem reiniciar reservas</b>.</li></ol>
+      <div class="botoes">
+        ${logsReais() ? `<button class="perigo" data-proc="salas" data-acao="parar">⏹ Derrubar salas</button>` : ""}
+        <button data-falha="criar">A) Criar reserva → espera 503</button>
+        <button data-falha="detalhe">B) Consultar reserva → 200 + avisos</button>
+        <button data-falha="saude">C) Health de reservas</button>
+        ${logsReais() ? `<button data-proc="salas" data-acao="iniciar">▶ Religar salas</button>` : ""}
+      </div>
+    </div>
+    <div></div>
+    <div class="resultado"></div>
+  </div>`;
+}
+
+function mostrarResultado(card, r) {
+  card.classList.remove("ok", "falhou");
+  card.classList.add(r.ok ? "ok" : "falhou");
+  $(".resultado", card).innerHTML = `${r.ok ? "✅" : "❌"} Obtido: ${String(r.status).includes("/") ? `<b>${esc(r.status)}</b>` : pill(r.status)} ${r.resumo ? "· " + esc(r.resumo) : ""}`;
+}
+
+async function executarPasso(p) {
+  const card = $(`.passo[data-id="${p.id}"]`);
+  const botao = $("button[data-passo]", card);
+  botao.disabled = true;
+  $(".resultado", card).innerHTML = "⏳ executando…";
+  try {
+    const r = await p.executar();
+    mostrarResultado(card, r);
+    return r;
+  } catch (e) {
+    mostrarResultado(card, { ok: false, status: "—", resumo: e.message });
+  } finally {
+    botao.disabled = false;
+  }
+}
+
+async function executarFalha(tipo) {
+  const card = $('.passo[data-id="falha"]');
+  const out = $(".resultado", card);
+  out.innerHTML = "⏳ executando… (com o serviço fora, reservas espera o timeout e tenta de novo antes de desistir)";
+  let r, ok, resumo;
+  if (tipo === "criar") {
+    const salaId = est.sala?.id ?? 1, usuarioId = est.usuario?.id ?? 1;
+    r = await chamar("reservas", "POST", "/reservas", { sala_id: salaId, usuario_id: usuarioId, inicio: horario(18), fim: horario(19) });
+    if (r.status === 201) est.criados.reservas.push(r.dados.id);
+    ok = r.status === 503; resumo = r.dados?.erro || (r.status === 201 ? "salas ainda está no ar?" : "");
+  } else if (tipo === "detalhe") {
+    if (!est.reserva) { out.innerHTML = "⚠️ Execute o passo 4 (criar reserva) <b>antes</b> de derrubar salas."; return; }
+    r = await chamar("reservas", "GET", `/reservas/${est.reserva.id}`);
+    ok = r.status === 200 && !!r.dados?.avisos;
+    resumo = r.dados?.avisos ? `sala: ${JSON.stringify(r.dados.sala)} · avisos: ${r.dados.avisos.join("; ")}` : r.status === 200 ? "sem avisos: salas ainda está no ar?" : r.dados?.erro;
+  } else {
+    r = await chamar("reservas", "GET", "/health");
+    verificarSaude();
+    const dep = r.dados?.dependencias || {};
+    ok = r.status === 200 && dep.salas !== "ok";
+    resumo = `reservas continua no ar (${r.status}) · salas: ${dep.salas} · usuários: ${dep.usuarios}`;
+  }
+  mostrarResultado(card, { ok, status: r.status, resumo });
+}
+
+document.addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-passo]");
+  if (b) executarPasso(PASSOS.find((p) => p.id === b.dataset.passo));
+  const f = e.target.closest("[data-falha]");
+  if (f) { f.disabled = true; await executarFalha(f.dataset.falha); f.disabled = false; }
+});
+
+$("#executar-tudo").addEventListener("click", async (e) => {
+  e.target.disabled = true;
+  for (const p of PASSOS.slice(0, 10)) {
+    const r = await executarPasso(p);
+    $(`.passo[data-id="${p.id}"]`).scrollIntoView({ behavior: "smooth", block: "nearest" });
+    await dormir(r?.ok ? 1300 : 600);
+  }
+  e.target.disabled = false;
+});
+
+$("#reiniciar-roteiro").addEventListener("click", () => { est = novoEstado(); montarPassos(); $("#narracao").textContent = "Roteiro reiniciado."; });
+
+// ===================== Abas de CRUD =====================
+const cache = { salas: [], usuarios: [], reservas: [] };
+
+$("#abas").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-aba]");
+  if (!b) return;
+  $$("#abas button").forEach((x) => x.classList.toggle("ativo", x === b));
+  $$(".aba").forEach((a) => a.classList.toggle("ativa", a.id === `aba-${b.dataset.aba}`));
+  if (b.dataset.aba === "reservas") { carregar("salas"); carregar("usuarios"); }
+  if (b.dataset.aba !== "roteiro") carregar(b.dataset.aba);
+});
+
+$$("[data-recarregar]").forEach((b) => b.addEventListener("click", () => carregar(b.dataset.recarregar)));
+
+async function carregar(servico) {
+  const r = await chamar(servico, "GET", `/${servico}`);
+  cache[servico] = Array.isArray(r.dados) ? r.dados : [];
+  if (!Array.isArray(r.dados)) $(`#tabela-${servico}`).innerHTML = `<div class="vazio">${pill(r.status)} ${esc(r.dados?.erro)}</div>`;
+  else desenhar[servico]();
+  if (servico === "salas" || servico === "usuarios") preencherSelects();
+}
+
+const acoes = (servico, id, extra = "") => `<td class="acoes">${extra}<button class="pequeno" data-editar="${servico}" data-id="${id}">Editar</button> <button class="pequeno perigo" data-excluir="${servico}" data-id="${id}">Excluir</button></td>`;
+const tabela = (cab, linhas) => linhas.length ? `<table><thead><tr>${cab.map((c) => `<th>${c}</th>`).join("")}<th></th></tr></thead><tbody>${linhas.join("")}</tbody></table>` : `<div class="vazio">Nenhum registro.</div>`;
+
+const desenhar = {
+  salas: () => $("#tabela-salas").innerHTML = tabela(["ID", "Nome", "Capacidade", "Localização", "Ativa"], cache.salas.map((s) =>
+    `<tr><td>${s.id}</td><td>${esc(s.nome)}</td><td>${s.capacidade}</td><td>${esc(s.localizacao ?? "—")}</td><td>${s.ativa ? '<span class="pill s-2">sim</span>' : '<span class="pill st-CANCELADA">não</span>'}</td>${acoes("salas", s.id)}</tr>`)),
+  usuarios: () => $("#tabela-usuarios").innerHTML = tabela(["ID", "Nome", "Email", "Tipo"], cache.usuarios.map((u) =>
+    `<tr><td>${u.id}</td><td>${esc(u.nome)}</td><td>${esc(u.email)}</td><td>${esc(u.tipo)}</td>${acoes("usuarios", u.id)}</tr>`)),
+  reservas: () => $("#tabela-reservas").innerHTML = tabela(["ID", "sala_id", "usuario_id", "Início", "Fim", "Status"], cache.reservas.map((r) =>
+    `<tr><td>${r.id}</td><td>${r.sala_id}</td><td>${r.usuario_id}</td><td>${dataBR(r.inicio)}</td><td>${dataBR(r.fim)}</td><td><span class="pill st-${r.status}">${r.status}</span></td>${acoes("reservas", r.id,
+      `<button class="pequeno" data-detalhar="${r.id}">Detalhar</button> ${r.status === "PENDENTE" ? `<button class="pequeno" data-status="CONFIRMADA" data-id="${r.id}">Confirmar</button> ` : ""}${r.status !== "CANCELADA" ? `<button class="pequeno" data-status="CANCELADA" data-id="${r.id}">Cancelar</button> ` : ""}`)}</tr>`)),
+};
+
+function preencherSelects() {
+  $("#sel-sala").innerHTML = cache.salas.map((s) => `<option value="${s.id}">#${s.id} ${esc(s.nome)}${s.ativa ? "" : " (inativa)"}</option>`).join("") + `<option value="999999">#999999 (não existe)</option>`;
+  $("#sel-usuario").innerHTML = cache.usuarios.map((u) => `<option value="${u.id}">#${u.id} ${esc(u.nome)}</option>`).join("") + `<option value="999999">#999999 (não existe)</option>`;
+}
+
+const editando = { salas: null, usuarios: null, reservas: null };
+const paraLocal = (iso) => { const d = new Date(iso); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 16); };
+
+function modoEdicao(servico, id) {
+  editando[servico] = id;
+  const form = $(`#form-${servico}`);
+  $("button[type=submit]", form).textContent = id ? `Salvar #${id} (PUT)` : "Criar (POST)";
+  $("[data-cancelar]", form).hidden = !id;
+  const so = $("[data-so-edicao]", form);
+  if (so) so.hidden = !id;
+  if (!id) form.reset();
+}
+
+const corpoDoForm = {
+  salas: (f) => ({ nome: f.nome.value, capacidade: Number(f.capacidade.value), localizacao: f.localizacao.value || null, ativa: f.ativa.checked }),
+  usuarios: (f) => ({ nome: f.nome.value, email: f.email.value, tipo: f.tipo.value }),
+  reservas: (f) => ({ sala_id: Number(f.sala_id.value), usuario_id: Number(f.usuario_id.value), inicio: new Date(f.inicio.value).toISOString(), fim: new Date(f.fim.value).toISOString(), ...(editando.reservas ? { status: f.status.value } : {}) }),
+};
+
+for (const servico of SERVICOS) {
+  const form = $(`#form-${servico}`);
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const id = editando[servico];
+    const r = await chamar(servico, id ? "PUT" : "POST", id ? `/${servico}/${id}` : `/${servico}`, corpoDoForm[servico](form));
+    if (r.status < 300) { modoEdicao(servico, null); carregar(servico); }
+  });
+  $("[data-cancelar]", form).addEventListener("click", () => modoEdicao(servico, null));
+}
+
+document.addEventListener("click", async (e) => {
+  const ed = e.target.closest("[data-editar]");
+  if (ed) {
+    const servico = ed.dataset.editar, id = Number(ed.dataset.id);
+    const item = cache[servico].find((x) => x.id === id), f = $(`#form-${servico}`);
+    modoEdicao(servico, id);
+    if (servico === "salas") { f.nome.value = item.nome; f.capacidade.value = item.capacidade; f.localizacao.value = item.localizacao ?? ""; f.ativa.checked = item.ativa; }
+    if (servico === "usuarios") { f.nome.value = item.nome; f.email.value = item.email; f.tipo.value = item.tipo; }
+    if (servico === "reservas") { f.sala_id.value = item.sala_id; f.usuario_id.value = item.usuario_id; f.inicio.value = paraLocal(item.inicio); f.fim.value = paraLocal(item.fim); f.status.value = item.status; }
+    f.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+  const ex = e.target.closest("[data-excluir]");
+  if (ex && confirm(`Excluir ${ex.dataset.excluir} #${ex.dataset.id}?`)) {
+    await chamar(ex.dataset.excluir, "DELETE", `/${ex.dataset.excluir}/${ex.dataset.id}`);
+    carregar(ex.dataset.excluir);
+  }
+  const st = e.target.closest("[data-status]");
+  if (st) {
+    await chamar("reservas", "PATCH", `/reservas/${st.dataset.id}/status`, { status: st.dataset.status });
+    carregar("reservas");
+  }
+  const det = e.target.closest("[data-detalhar]");
+  if (det) {
+    const r = await chamar("reservas", "GET", `/reservas/${det.dataset.detalhar}`);
+    $("#detalhe-reserva").innerHTML = `<h3 style="margin-top:14px">Reserva #${esc(det.dataset.detalhar)} ${pill(r.status)}</h3>
+      <p class="nota">Os campos <code>sala</code> e <code>usuario</code> foram buscados agora nos serviços de salas e usuários.</p><pre>${json(r.dados)}</pre>`;
+  }
+});
+
+// ===================== Inicialização =====================
+function trocarAlvo(novo) {
+  alvo = novo;
+  $$("#alternador button").forEach((b) => b.classList.toggle("ativo", b.dataset.alvo === alvo));
+  est = novoEstado();
+  montarChips();
+  montarPassos();
+  $("#dica-roteiro").textContent = alvo === "nuvem" ? "Na nuvem, o primeiro passo pode demorar ~1 min se os serviços estiverem dormindo." : "";
+  $("#nota-logs").innerHTML = logsReais()
+    ? "Saída real dos 3 processos. As linhas destacadas são as chamadas HTTP de reservas para os outros serviços, e são elas que animam as setas tracejadas."
+    : alvo === "nuvem"
+      ? "Na nuvem, os logs ficam no painel do Render (aba <b>Logs</b> de cada serviço). Aqui, as setas tracejadas são deduzidas da rota chamada."
+      : "Para ver os logs aqui e poder derrubar/religar serviços, rode <code>npm run painel -- --local</code>.";
+  for (const s of SERVICOS) marcarSaude(s, "desconhecido", "⚪ verificando…");
+  ["salas", "usuarios"].forEach((d) => { $(`#rotulo-r-${d}`).textContent = ""; });
+  verificarSaude();
+}
+
+$("#alternador").addEventListener("click", (e) => { const b = e.target.closest("button[data-alvo]"); if (b) trocarAlvo(b.dataset.alvo); });
+$("#limpar-req").addEventListener("click", () => { $("#requisicoes").innerHTML = '<div class="vazio">Nenhuma requisição ainda.</div>'; });
+$("#limpar-logs").addEventListener("click", () => { $("#logs").innerHTML = ""; });
+
+(async function () {
+  config = await (await fetch("/config")).json();
+  if (config.gerenciarLocal) conectarEventos();
+  trocarAlvo(config.gerenciarLocal ? "local" : "nuvem");
+  setInterval(verificarSaude, 20000);
+})();
+</script>
+</body>
+</html>

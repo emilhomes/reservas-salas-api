@@ -12,6 +12,7 @@
 - Respostas **422** para sala inexistente, sala inativa e usuário inexistente.
 - `scripts/dev.js` sobe os 3 serviços localmente; `scripts/testar-api.js` testa os 3 (20 verificações, local ou nuvem).
 - Diagrama de arquitetura em `docs/arquitetura.svg` / `.png`.
+- Painel web de demonstração (`npm run painel`): diagrama animado, roteiro de testes com resultados esperados, CRUD de cada serviço, histórico de requisições e, com `--local`, logs ao vivo e botão para derrubar/religar serviços.
 
 ### Alterado
 - Código reorganizado em monorepo: `src/` virou `services/reservas/src/`.
