@@ -9,7 +9,7 @@ Projeto incremental da disciplina **Sistemas Distribuídos** (UERN, 3ª unidade)
 | 🌐 **Reservas** (entrada principal) | https://reservas-salas-api.onrender.com |
 | 🌐 **Salas** | https://servico-salas.onrender.com |
 | 🌐 **Usuários** | https://servico-usuarios.onrender.com |
-| 🎥 **Vídeo do Módulo 2** | https://youtu.be/SEU-VIDEO ← *(substituir)* |
+| 🎥 **Vídeo do Módulo 2** | https://drive.google.com/file/d/1Z5bWpSyRRnSwUiyd7bfVDBEq_yD49Dxc/view?usp=sharing |
 | 🎥 **Vídeo do Módulo 1** | https://drive.google.com/file/d/1nra5iK1i0fpFXBGh57rVP6sTLAbB59ck/view?usp=sharing |
 | 🏷️ **Tag da entrega** | `entrega-2-microsservicos` (anterior: `entrega-1-cloud`) |
 
