@@ -2,16 +2,17 @@
 
 Projeto incremental da disciplina **Sistemas Distribuídos** (UERN, 3ª unidade).
 
-> **Entrega atual: Módulo 2, Serviços / Microsserviços.** A API do Módulo 1 foi dividida em **3 microsserviços independentes** (salas, usuários e reservas), cada um com seu próprio código, seu próprio banco e seu próprio deploy. Eles se comunicam via **HTTP/REST síncrono**.
+> **Entrega atual: Módulo 3, Containers.** Os 3 microsserviços do Módulo 2 (salas, usuários e reservas) agora têm **um `Dockerfile` cada** e sobem, junto com **3 bancos PostgreSQL em container**, com um único `docker compose up`. Os dados ficam em **volumes persistentes**. O código dos serviços não mudou: só a forma de empacotar e executar. ➜ [Seção 4](#4-como-executar-com-docker-módulo-3)
 
 | | |
 |---|---|
 | 🌐 **Reservas** (entrada principal) | https://reservas-salas-api.onrender.com |
 | 🌐 **Salas** | https://servico-salas.onrender.com |
 | 🌐 **Usuários** | https://servico-usuarios.onrender.com |
+| 🎥 **Vídeo do Módulo 3** | https://youtu.be/SEU-VIDEO ← *(substituir)* |
 | 🎥 **Vídeo do Módulo 2** | https://youtu.be/SEU-VIDEO ← *(substituir)* |
 | 🎥 **Vídeo do Módulo 1** | https://drive.google.com/file/d/1nra5iK1i0fpFXBGh57rVP6sTLAbB59ck/view?usp=sharing |
-| 🏷️ **Tag da entrega** | `entrega-2-microsservicos` (anterior: `entrega-1-cloud`) |
+| 🏷️ **Tag da entrega** | `entrega-3-containers` (anteriores: `entrega-2-microsservicos`, `entrega-1-cloud`) |
 
 ---
 
@@ -128,7 +129,89 @@ Log do serviço de reservas:
 
 ---
 
-## 4. Como executar localmente
+## 4. Como executar com Docker (Módulo 3)
+
+Pré-requisito: **só o [Docker Desktop](https://www.docker.com/products/docker-desktop/)** (no Windows, com WSL 2). Não é preciso instalar Node nem PostgreSQL: tudo roda dentro dos containers.
+
+```bash
+git clone https://github.com/emilhomes/reservas-salas-api.git
+cd reservas-salas-api
+git checkout entrega-3-containers
+
+docker compose up -d --build --wait     # constrói as 3 imagens e sobe os 6 containers
+docker compose ps                       # todos devem aparecer como (healthy)
+```
+
+Saída esperada do `docker compose ps`:
+
+```
+SERVICE       STATUS                    PORTS
+db-reservas   Up 17 seconds (healthy)   5432/tcp
+db-salas      Up 17 seconds (healthy)   5432/tcp
+db-usuarios   Up 17 seconds (healthy)   5432/tcp
+reservas      Up 6 seconds (healthy)    0.0.0.0:3000->3000/tcp
+salas         Up 6 seconds (healthy)    0.0.0.0:3001->3001/tcp
+usuarios      Up 6 seconds (healthy)    0.0.0.0:3002->3002/tcp
+```
+
+A API fica em `http://localhost:3000` (reservas), `:3001` (salas) e `:3002` (usuários), as mesmas portas de antes. Todos os comandos `curl` da seção 6 funcionam sem mudança.
+
+| Comando | O que faz |
+|---|---|
+| `docker compose up -d --build --wait` | Constrói as imagens e sobe tudo, esperando ficar *healthy* (atalho: `npm run docker:up`) |
+| `docker compose logs -f reservas` | Acompanha os logs de um serviço (todos: `npm run docker:logs`) |
+| `docker compose stop salas` / `start salas` | Derruba / religa só um serviço (testa o tratamento de falha) |
+| `docker compose down` | Remove os containers e a rede. **Os dados ficam nos volumes.** |
+| `docker compose down -v` | Remove também os volumes: **apaga todos os dados** |
+
+### 4.1 Arquitetura em containers
+
+```
+                          sua máquina (localhost)
+                 :3001             :3000              :3002
+┌──────────────────┼─────────────────┼──────────────────┼────────────────────┐
+│  rede Docker     ▼                 ▼                  ▼   "reservas-salas" │
+│          ┌──────────────┐   ┌──────────────┐   ┌──────────────┐            │
+│          │    salas     │◄──│   reservas   │──►│   usuarios   │            │
+│          │ (container)  │   │ (container)  │   │ (container)  │            │
+│          └──────┬───────┘   └──────┬───────┘   └──────┬───────┘            │
+│                 ▼                  ▼                  ▼                    │
+│          ┌──────────────┐   ┌──────────────┐   ┌──────────────┐            │
+│          │   db-salas   │   │ db-reservas  │   │ db-usuarios  │  Postgres  │
+│          │ (postgres 17)│   │ (postgres 17)│   │ (postgres 17)│  sem porta │
+│          └──────┬───────┘   └──────┬───────┘   └──────┬───────┘  exposta   │
+└─────────────────┼──────────────────┼──────────────────┼────────────────────┘
+                  ▼                  ▼                  ▼
+           [dados-salas]     [dados-reservas]    [dados-usuarios]   ← volumes
+```
+
+- Dentro da rede do Docker, cada container é achado **pelo nome do serviço** (DNS interno): reservas chama `http://salas:3001` e se conecta em `db-reservas:5432`. Por isso `SALAS_URL`, `USUARIOS_URL` e `DATABASE_URL` são definidas no `docker-compose.yml`, sem mudar o código.
+- Só as 3 APIs publicam porta na máquina. Os bancos **não ficam acessíveis de fora**: só o serviço dono de cada banco consegue falar com ele.
+- **Ordem de subida:** cada serviço espera o seu banco ficar *healthy* (`pg_isready`) antes de iniciar. Reservas espera salas e usuários apenas *iniciarem*: se um deles cair depois, reservas continua no ar e responde 503 (tratamento do Módulo 2).
+
+### 4.2 Os Dockerfiles
+
+Os três seguem o mesmo modelo ([`services/salas/Dockerfile`](services/salas/Dockerfile)):
+
+| Boa prática | Como foi aplicada | Por quê |
+|---|---|---|
+| **Imagem base enxuta** | `node:22-alpine` | ~245 MB por imagem; a `node:22` completa (Debian com compiladores) passa de 1 GB. Menos coisa instalada = download mais rápido e menos superfície de ataque. |
+| **Multi-stage build** | Etapa `dependencias` roda `npm ci`; a etapa final só copia `node_modules` e `src/` | O cache do npm e os arquivos temporários da instalação ficam na primeira etapa e não vão para a imagem final. |
+| **Cache de camadas** | `COPY package*.json` + `npm ci` **antes** de `COPY src` | Mudou só o código? O Docker reaproveita a camada das dependências e o build leva segundos. |
+| **Build reproduzível** | `npm ci --omit=dev` (usa o `package-lock.json`) | Instala exatamente as mesmas versões sempre, e só as de produção. |
+| **Sem root** | `USER node` | Se alguém explorar uma falha na API, não ganha root dentro do container. |
+| **`.dockerignore`** | Ignora `node_modules`, `.env` e logs | O `.env` (com segredos do Neon) **nunca** entra na imagem, e o `node_modules` do Windows não sobrescreve o do Linux. |
+| **`HEALTHCHECK`** | `wget` no `/health` a cada 10 s | O Docker sabe se o serviço está realmente pronto (no ar **e** conectado ao banco), não só se o processo existe. |
+| **Configuração por ambiente** | `DATABASE_URL`, `SALAS_URL`... vêm do compose | A mesma imagem roda local, no compose ou em nuvem: só mudam as variáveis (12-factor). |
+| **Encerramento correto** | `CMD ["node", ...]` (forma *exec*) + `init: true` no compose | O `docker stop` chega ao Node e o container para na hora, em vez de esperar 10 s e ser morto à força. |
+
+### 4.3 Variáveis de ambiente e segredos
+
+Usuário e senha dos bancos vêm das variáveis `POSTGRES_USER` e `POSTGRES_PASSWORD`. Se não forem definidas, o compose usa os padrões `reservas` / `reservas_local`, que **só valem para rodar localmente**: esses bancos não ficam expostos para fora da rede do Docker. Para trocar, defina as variáveis no terminal ou em um arquivo `.env` na raiz (que não vai para o Git) antes do `docker compose up`.
+
+### 4.4 Rodar sem Docker (como no Módulo 2)
+
+Continua funcionando, apontando para os bancos do Neon.
 
 Pré-requisitos: **Node.js 22+** e um PostgreSQL com **3 bancos**: `salas_db`, `usuarios_db` e `reservas_db`. Pode ser um Postgres local ou os 3 bancos do Neon (ver 5.1).
 
@@ -185,10 +268,50 @@ Passo a passo:
 
 ## 6. Testes
 
-### Script de ponta a ponta (20 verificações)
+### Persistência dos dados após `docker compose down` / `up` (Módulo 3)
+
+Com os containers no ar:
 
 ```bash
-# local
+npm run test:persistencia
+```
+
+O script cria uma sala, um usuário e uma reserva CONFIRMADA (um registro em **cada um dos 3 bancos**), roda `docker compose down` (que **apaga todos os containers**, inclusive os dos bancos), confere que a API saiu do ar, roda `docker compose up -d --wait` (containers **novos**) e busca os 3 registros de novo.
+
+✅ **Resultado (12/11/2026):**
+
+```
+=== 1. Criando dados (um registro em cada banco) ===
+    ✔ Sala criada (id 3) no banco salas_db
+    ✔ Usuário criado (id 2) no banco usuarios_db
+    ✔ Reserva criada (id 2) no banco reservas_db
+    ✔ Reserva CONFIRMADA
+=== 2. Derrubando TUDO (containers dos serviços e dos bancos) ===
+$ docker compose down
+ Container reservas-salas-db-salas-1 Removed
+ ...
+ Network reservas-salas_default Removed
+    ✔ API fora do ar: os containers não existem mais
+=== 3. Subindo containers NOVOS ===
+$ docker compose up -d --wait
+ ...
+ Container reservas-salas-reservas-1 Healthy
+=== 4. Os dados continuam lá? ===
+    ✔ Sala 3 ainda existe: "Sala persistente 1794537178196"
+    ✔ Usuário 2 ainda existe: joao.1794537178196@exemplo.com
+    ✔ Reserva 2 ainda existe e continua CONFIRMADA
+    ✔ Reserva continua compondo sala e usuário via HTTP (os 3 bancos persistiram)
+Todos os 9 testes de persistência passaram! ✅
+```
+
+Para fazer na mão: crie algo com os `curl` abaixo, rode `docker compose down`, depois `docker compose up -d --wait` e liste de novo (`curl localhost:3001/salas`). Para ver a diferença, repita com `docker compose down -v`: aí os volumes são apagados e as listas voltam vazias.
+
+### Script de ponta a ponta (20 verificações)
+
+✅ **Nos containers (12/11/2026):** 20/20 verificações passaram com `npm run test:api`, sem nenhuma mudança no código dos serviços.
+
+```bash
+# local (containers ou npm run dev)
 npm run test:api
 
 # nuvem
@@ -202,6 +325,25 @@ npm run test:api -- --reservas https://reservas-salas-api.onrender.com \
 O script acorda os 3 serviços, cria sala e usuário e então testa reserva criada (201), conflito (409), sala inexistente (422), usuário inexistente (422), sala inativa (422), detalhe com dados compostos, listagem, PUT, PATCH, health com dependências e limpeza.
 
 ### Testando a falha de um serviço (tratamento de erro)
+
+**Com Docker** (o jeito mais fácil):
+
+```
+$ docker compose stop salas
+$ curl -X POST localhost:3000/reservas -H "Content-Type: application/json" -d '{"sala_id":3,"usuario_id":2,...}'
+{"erro":"O serviço de salas está indisponível no momento. Tente novamente em instantes.","servico":"salas"}   ← HTTP 503
+
+$ docker compose logs reservas
+reservas-1  | [reservas -> salas] tentativa 1/2 falhou: ENOTFOUND
+reservas-1  | [reservas -> salas] tentativa 2/2 falhou: ENOTFOUND
+reservas-1  | [reservas] Serviço de salas indisponível (ENOTFOUND). Respondendo 503.
+
+$ docker compose start salas      # tudo volta a funcionar, sem reiniciar reservas
+```
+
+> Repare que no Docker o erro é `ENOTFOUND`, e não `ECONNREFUSED` como rodando direto no Windows. Quando o container de salas para, o **nome** `salas` some do DNS interno da rede Docker; sem Docker, o endereço `localhost` continua existindo, só não tem ninguém escutando na porta.
+
+**Sem Docker:**
 
 1. Com os 3 serviços rodando, pare **só o de salas** (Ctrl+C no terminal dele, ou suspenda o serviço no painel do Render).
 2. Tente criar uma reserva:
@@ -233,7 +375,35 @@ curl -X PATCH localhost:3000/reservas/1/status -H "Content-Type: application/jso
 
 ---
 
-## 7. Estrutura do projeto
+## 7. Deploy direto (Módulos 1 e 2) × containers (Módulo 3)
+
+| Aspecto | Deploy direto (Render + Neon) | Containers (Docker Compose) |
+|---|---|---|
+| **Quem prepara o ambiente** | A plataforma: o Render detecta Node, roda `npm install` e `npm start` no ambiente dele | Nós: o `Dockerfile` descreve exatamente o sistema operacional, a versão do Node e as dependências |
+| **O que é publicado** | O código-fonte (o Render monta o ambiente a cada deploy) | Uma **imagem** pronta e imutável, que roda igual em qualquer máquina com Docker |
+| **Para rodar localmente** | Instalar Node 22, ter 3 bancos (Neon ou Postgres local), criar 3 arquivos `.env` e abrir 3 terminais (ou `npm run dev`) | Instalar só o Docker e rodar `docker compose up` |
+| **Bancos** | Gerenciados pelo Neon (backup, SSL e disponibilidade por conta deles) | Nós cuidamos: containers Postgres com volumes. Mais controle, mas backup e atualização viram nossa responsabilidade |
+| **Comunicação entre serviços** | URLs públicas pela internet (`https://servico-salas.onrender.com`) | Rede interna do Docker, pelo nome (`http://salas:3001`), sem passar pela internet. Os bancos nem têm porta exposta |
+| **Cold start** | Cada serviço dorme após 15 min no plano Free; a primeira chamada pode levar ~50 s, por isso o timeout de 15 s com 4 tentativas | Não existe localmente: o timeout volta para 5 s com 2 tentativas |
+| **Isolamento** | O Render isola cada Web Service, mas não vemos nem controlamos isso | Cada serviço tem seu próprio sistema de arquivos, processo e usuário (não root), e conversa só com quem está na mesma rede |
+
+**O que ficou mais fácil:**
+- **Reprodutibilidade:** "na minha máquina funciona" deixa de ser problema. O professor ou um colega roda o sistema inteiro (3 APIs e 3 bancos) com **um comando**, sem instalar Node ou Postgres.
+- **Ambiente completo e descartável:** `docker compose down -v` zera tudo, e `up` recria do zero em segundos. Ótimo para testar.
+- **Testar falhas:** `docker compose stop salas` simula a queda de um serviço de forma realista, inclusive com o nome sumindo do DNS.
+- **Portabilidade:** a mesma imagem pode ir para qualquer nuvem que aceite containers (Render, Railway, Fly.io, Kubernetes), sem depender do "detector de Node" de cada plataforma.
+- **Base para o Módulo 4:** o RabbitMQ entra como mais um serviço no mesmo `docker-compose.yml`.
+
+**O que ficou mais difícil:**
+- **Mais uma ferramenta e mais conceitos:** imagem, container, volume, rede, healthcheck. No Windows ainda é preciso o WSL 2 e o Docker Desktop, que consomem bastante memória.
+- **Mais arquivos para manter:** Dockerfile, `.dockerignore` e compose. Errar o `.dockerignore`, por exemplo, poderia colocar o `.env` com segredos dentro da imagem.
+- **Banco por nossa conta:** no Neon, backup e disponibilidade eram automáticos; nos volumes locais, se o volume for apagado (`down -v`), os dados se perdem.
+- **Ordem de inicialização:** o serviço não pode subir antes do banco aceitar conexões. Foi preciso configurar `healthcheck` nos bancos e `depends_on: condition: service_healthy`.
+- **Depuração:** os logs e o terminal ficam "dentro" do container (`docker compose logs`, `docker compose exec`), e não mais direto no terminal.
+
+> A versão em nuvem (seção 5) continua no deploy direto do Módulo 2, com os bancos no Neon. A republicação via imagem de container é opcional no enunciado.
+
+## 8. Estrutura do projeto
 
 ```
 ├── services/
@@ -242,6 +412,8 @@ curl -X PATCH localhost:3000/reservas/1/status -H "Content-Type: application/jso
 │   │   ├── src/db.js          # conexão com salas_db + criação da tabela
 │   │   ├── src/salas.js       # CRUD de salas
 │   │   ├── package.json
+│   │   ├── Dockerfile         # imagem do serviço (multi-stage, alpine, sem root)
+│   │   ├── .dockerignore      # o que NÃO entra na imagem (.env, node_modules)
 │   │   └── .env.example
 │   ├── usuarios/              # mesma estrutura (usuarios.js)
 │   └── reservas/
@@ -250,10 +422,14 @@ curl -X PATCH localhost:3000/reservas/1/status -H "Content-Type: application/jso
 │       ├── src/reservas.js    # CRUD, conflito, validação via outros serviços
 │       ├── src/clientes.js    # cliente HTTP: timeout, nova tentativa, 503
 │       ├── package.json
+│       ├── Dockerfile
+│       ├── .dockerignore
 │       └── .env.example
+├── docker-compose.yml         # 3 serviços + 3 bancos Postgres + 3 volumes
 ├── scripts/
 │   ├── dev.js                 # sobe os 3 serviços localmente
-│   └── testar-api.js          # teste de ponta a ponta (local ou nuvem)
+│   ├── testar-api.js          # teste de ponta a ponta (local, containers ou nuvem)
+│   └── testar-persistencia.js # dados sobrevivem a docker compose down/up
 ├── docs/
 │   ├── arquitetura.svg / .png # diagrama
 │   └── prints/                # evidências
@@ -262,9 +438,9 @@ curl -X PATCH localhost:3000/reservas/1/status -H "Content-Type: application/jso
 └── README.md
 ```
 
-## 8. Roadmap
+## 9. Roadmap
 
 - [x] **Módulo 1:** Computação em Nuvem (`entrega-1-cloud`)
-- [x] **Módulo 2:** Microsserviços: salas, usuarios, reservas (esta entrega)
-- [ ] **Módulo 3:** Containers (um Dockerfile por serviço + docker-compose com os 3 bancos)
+- [x] **Módulo 2:** Microsserviços: salas, usuarios, reservas (`entrega-2-microsservicos`)
+- [x] **Módulo 3:** Containers: um Dockerfile por serviço + docker-compose com os 3 bancos (esta entrega)
 - [ ] **Módulo 4:** Mensageria (evento "reserva confirmada" via RabbitMQ)

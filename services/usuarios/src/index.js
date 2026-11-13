@@ -16,7 +16,7 @@ app.use((req, res, next) => {
 app.get("/", (req, res) => {
   res.json({
     servico: "usuarios",
-    versao: "2.0.0 (Módulo 2 - Microsserviços)",
+    versao: "3.0.0 (Módulo 3 - Containers)",
     endpoints: [
       "GET    /health",
       "GET    /usuarios",

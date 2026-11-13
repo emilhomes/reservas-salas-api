@@ -1,5 +1,19 @@
 # Changelog
 
+## [entrega-3-containers] Módulo 3: Containers
+
+### Adicionado
+- `Dockerfile` em cada serviço (`services/salas`, `services/usuarios`, `services/reservas`): base `node:22-alpine`, build em duas etapas, `npm ci --omit=dev`, usuário `node` (sem root) e `HEALTHCHECK` no `/health`.
+- `.dockerignore` em cada serviço: `.env` e `node_modules` nunca entram na imagem.
+- `docker-compose.yml` orquestrando os 3 serviços e **3 bancos PostgreSQL 17** (um por serviço), com volumes nomeados (`dados-salas`, `dados-usuarios`, `dados-reservas`), healthcheck nos bancos e ordem de subida (`depends_on: service_healthy`).
+- `scripts/testar-persistencia.js` (`npm run test:persistencia`): cria dados nos 3 bancos, roda `docker compose down` e `up` e confere que tudo persistiu (9 verificações).
+- Atalhos `npm run docker:up`, `docker:down` e `docker:logs`.
+- README: como rodar com Docker, diagrama da rede de containers, boas práticas dos Dockerfiles e comparação entre deploy direto e containers.
+
+### Alterado
+- Versão dos serviços: 3.0.0.
+- Nenhuma mudança na lógica dos serviços: toda a configuração (banco, URLs dos outros serviços) já vinha de variáveis de ambiente, e agora é definida no compose.
+
 ## [entrega-2-microsservicos] Módulo 2: Serviços / Microsserviços
 
 ### Adicionado

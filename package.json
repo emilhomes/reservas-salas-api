@@ -1,12 +1,16 @@
 {
   "name": "reservas-salas-microsservicos",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "description": "Reserva de salas em microsserviços - Projeto incremental de Sistemas Distribuídos (UERN)",
   "private": true,
   "scripts": {
     "install:all": "npm install --prefix services/salas && npm install --prefix services/usuarios && npm install --prefix services/reservas",
     "dev": "node scripts/dev.js",
-    "test:api": "node scripts/testar-api.js"
+    "test:api": "node scripts/testar-api.js",
+    "docker:up": "docker compose up -d --build --wait",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f salas usuarios reservas",
+    "test:persistencia": "node scripts/testar-persistencia.js"
   },
   "engines": {
     "node": ">=22"

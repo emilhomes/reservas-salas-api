@@ -1,0 +1,114 @@
+# Módulo 3 - Containers
+# Sobe os 3 microsserviços e os 3 bancos com um único comando:
+#
+#   docker compose up -d --build
+#
+# Cada serviço continua com o seu PRÓPRIO banco (database per service), agora
+# rodando cada um em um container Postgres separado, com volume persistente.
+#
+# Usuário e senha dos bancos vêm de variáveis de ambiente (POSTGRES_USER e
+# POSTGRES_PASSWORD), lidas do shell ou de um arquivo .env nesta pasta. Os valores
+# padrão abaixo servem só para rodar localmente; os bancos não ficam expostos
+# fora da rede interna do Docker.
+
+name: reservas-salas
+
+x-postgres: &postgres
+  image: postgres:17-alpine
+  restart: unless-stopped
+  healthcheck:
+    test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+    interval: 5s
+    timeout: 3s
+    retries: 10
+
+x-servico: &servico
+  restart: unless-stopped
+  init: true # repassa o Ctrl+C / docker stop para o Node (encerramento rápido)
+
+services:
+  # ---------------- Bancos (um por serviço) ----------------
+  db-salas:
+    <<: *postgres
+    environment:
+      POSTGRES_DB: salas_db
+      POSTGRES_USER: ${POSTGRES_USER:-reservas}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-reservas_local}
+    volumes:
+      - dados-salas:/var/lib/postgresql/data
+
+  db-usuarios:
+    <<: *postgres
+    environment:
+      POSTGRES_DB: usuarios_db
+      POSTGRES_USER: ${POSTGRES_USER:-reservas}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-reservas_local}
+    volumes:
+      - dados-usuarios:/var/lib/postgresql/data
+
+  db-reservas:
+    <<: *postgres
+    environment:
+      POSTGRES_DB: reservas_db
+      POSTGRES_USER: ${POSTGRES_USER:-reservas}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-reservas_local}
+    volumes:
+      - dados-reservas:/var/lib/postgresql/data
+
+  # ---------------- Microsserviços ----------------
+  salas:
+    <<: *servico
+    build: ./services/salas
+    image: reservas-salas/salas:3.0.0
+    environment:
+      PORT: 3001
+      DATABASE_URL: postgresql://${POSTGRES_USER:-reservas}:${POSTGRES_PASSWORD:-reservas_local}@db-salas:5432/salas_db
+    ports:
+      - "3001:3001"
+    depends_on:
+      db-salas:
+        condition: service_healthy
+
+  usuarios:
+    <<: *servico
+    build: ./services/usuarios
+    image: reservas-salas/usuarios:3.0.0
+    environment:
+      PORT: 3002
+      DATABASE_URL: postgresql://${POSTGRES_USER:-reservas}:${POSTGRES_PASSWORD:-reservas_local}@db-usuarios:5432/usuarios_db
+    ports:
+      - "3002:3002"
+    depends_on:
+      db-usuarios:
+        condition: service_healthy
+
+  reservas:
+    <<: *servico
+    build: ./services/reservas
+    image: reservas-salas/reservas:3.0.0
+    environment:
+      PORT: 3000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-reservas}:${POSTGRES_PASSWORD:-reservas_local}@db-reservas:5432/reservas_db
+      # Dentro da rede do Docker, cada serviço é encontrado pelo NOME (DNS interno).
+      SALAS_URL: http://salas:3001
+      USUARIOS_URL: http://usuarios:3002
+      HTTP_TIMEOUT_MS: 5000
+      HTTP_TENTATIVAS: 2
+    ports:
+      - "3000:3000"
+    depends_on:
+      db-reservas:
+        condition: service_healthy
+      # Só espera salas e usuários ficarem "started", não "healthy": se um deles
+      # cair depois, reservas continua no ar e responde 503 (tratamento do Módulo 2).
+      salas:
+        condition: service_started
+      usuarios:
+        condition: service_started
+
+# Volumes nomeados: os dados ficam fora dos containers e sobrevivem a
+# "docker compose down". Só "docker compose down -v" apaga os dados.
+volumes:
+  dados-salas:
+  dados-usuarios:
+  dados-reservas:
